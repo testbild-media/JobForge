@@ -1,4 +1,4 @@
-from core.crud import Crud, CrudDetail, color_badge
+from core.crud import Crud, color_badge
 
 from .forms import AddressFormSet, ContactForm, PersonFormSet
 from .models import Contact
@@ -7,10 +7,6 @@ from .models import Contact
 def type_badge(c):
     colors = {"customer": "#0ea5e9", "supplier": "#a855f7", "both": "#6366f1", "other": "#64748b"}
     return color_badge(c.get_contact_type_display(), colors.get(c.contact_type))
-
-
-class ContactDetail(CrudDetail):
-    pass
 
 
 class ContactCrud(Crud):

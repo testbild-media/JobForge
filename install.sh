@@ -144,7 +144,7 @@ if [[ -d "$APP_DIR/.git" ]]; then
 else
   info "Lade JobForge von $REPO_URL …"
   rm -rf "$APP_DIR"
-  as_app git clone --quiet --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
+  as_app git -c init.defaultBranch=main clone --quiet --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
 fi
 VERSION_INFO="$(as_app git -C "$APP_DIR" log -1 --format='%h (%cd)' --date=short)"
 ok "Code bereit: $VERSION_INFO"
@@ -209,7 +209,8 @@ if grep -q '^DATABASE_URL=postgres' "$ENV_FILE"; then
     runuser -u postgres -- createuser "$SERVICE_USER"
   fi
   if ! runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='jobforge'" | grep -q 1; then
-    runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 jobforge
+    # template0 + UTF8: funktioniert auch, wenn der Cluster ohne System-Locale (SQL_ASCII) angelegt wurde
+    runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C.UTF-8 jobforge 2>/dev/null       || runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C jobforge
   fi
   ok "PostgreSQL bereit (Zugriff per Unix-Socket, ohne Passwort)"
 fi

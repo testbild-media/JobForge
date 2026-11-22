@@ -1,6 +1,6 @@
 /* JobForge Service Worker – App-Shell-Cache und Offline-Seite. */
 const CACHE = "jobforge-{{ version }}";
-const ASSETS = ["/static/css/app.css", "/static/js/app.js", "/static/js/scanner.js", "/static/icons/icon-192.png", "/offline/"];
+const ASSETS = ["/static/css/app.css", "/static/js/app.js", "/static/js/scanner.js", "/static/icons/icon-192.png", "/static/branding/logo_light.svg", "/static/branding/logo_dark.svg", "/offline/"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

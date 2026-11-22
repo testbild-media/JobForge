@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ title|default:"JobForge" }}{% endblock %} · JobForge</title>
-  <meta name="theme-color" content="{{ company.primary_color|default:'#e8590c' }}">
+  <meta name="theme-color" content="{{ company.primary_color|default:'#ff8900' }}">
   <link rel="manifest" href="{% url 'manifest' %}">
   <link rel="icon" href="{% static 'icons/favicon.svg' %}" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+  <link rel="icon" href="{% static 'icons/favicon-32.png' %}" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ ASSET_VERSION }}">
-  <style>:root { --primary: {{ company.primary_color|default:"#e8590c" }}; --sidebar: {{ company.secondary_color|default:"#1f2937" }}; }</style>
+  <style>:root { --primary: {{ company.primary_color|default:"#ff8900" }}; --primary-contrast: {{ company.primary_contrast|default:"#1a1a1a" }}; --sidebar: {{ company.secondary_color|default:"#1a1a1a" }}; }</style>
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -17,8 +18,11 @@
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <a class="brand" href="{% url 'core:dashboard' %}">
-      {% if company.logo %}<img src="{{ company.logo.url }}" alt="">{% else %}<span class="logo-mark">JF</span>{% endif %}
+      {% if company.logo %}<img src="{{ company.logo.url }}" alt="">
       <span>{{ company.name|default:"JobForge" }}<small>JobForge</small></span>
+      {% else %}<span class="brand-stack">
+        <img class="wordmark" src="{% static 'branding/'|add:company.sidebar_logo %}" alt="JobForge – Forge your workflow">
+        {% if company.name %}<small>{{ company.name }}</small>{% endif %}</span>{% endif %}
     </a>
     <nav class="nav">
       <a href="{% url 'core:dashboard' %}" class="{% active request '/' True %}">{% icon 'dashboard' %} Übersicht</a>
@@ -64,7 +68,7 @@
       <div class="nav-section">System</div>
       <a href="{% url 'core:settings' %}" class="{% active request '/einstellungen' %}">{% icon 'settings' %} Einstellungen</a>
     </nav>
-    <div class="sidebar-footer">JobForge {{ JOBFORGE_VERSION }} · AGPLv3</div>
+    <div class="sidebar-footer"><img src="{% static 'branding/favicon.svg' %}" alt="" width="14" height="14"> JobForge {{ JOBFORGE_VERSION }} · AGPLv3</div>
   </aside>
   <div class="main">
     <header class="topbar">

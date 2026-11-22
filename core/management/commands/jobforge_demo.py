@@ -49,7 +49,7 @@ class Command(BaseCommand):
         shelf1 = Location.objects.create(name="Regal 1", kind="shelf", parent=hall)
         shelf2 = Location.objects.create(name="Regal 2", kind="shelf", parent=hall)
         cable = Location.objects.create(name="Kabelwand", kind="bin", parent=hall)
-        van = Location.objects.create(name="Transporter K-FG 123", kind="vehicle")
+        Location.objects.create(name="Transporter K-FG 123", kind="vehicle")
         second = Location.objects.create(name="Außenlager Bonn", kind="site")
 
         light = ArticleGroup.objects.create(name="Lichttechnik", color="#f59e0b")

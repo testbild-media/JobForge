@@ -1,8 +1,8 @@
 /* JobForge – Forge your workflow. Basis-Stylesheet (ohne Build-Schritt). */
 :root {
-  --primary: #e8590c;
+  --primary: #ff8900;
   --primary-contrast: #fff;
-  --sidebar: #1f2937;
+  --sidebar: #1a1a1a;
   --bg: #f4f5f7;
   --surface: #ffffff;
   --surface-2: #f8fafc;
@@ -66,7 +66,7 @@ small, .muted { color: var(--muted); }
 .nav a { display: flex; align-items: center; gap: .65rem; padding: .45rem .6rem; border-radius: 8px;
   color: #cbd5e1; font-size: .92rem; }
 .nav a:hover { background: rgba(255,255,255,.06); color: #fff; text-decoration: none; }
-.nav a.active { background: var(--primary); color: #fff; }
+.nav a.active { background: var(--primary); color: var(--primary-contrast); }
 .sidebar-footer { margin-top: auto; padding: .8rem 1.1rem; font-size: .75rem; color: #64748b; }
 
 .main { min-width: 0; display: flex; flex-direction: column; }
@@ -217,7 +217,7 @@ tr.row-ok td { background: color-mix(in srgb, var(--success) 6%, transparent); }
   padding: .3rem; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cal .day:nth-child(7n) { border-right: 0; }
 .cal .day.out { background: var(--surface-2); opacity: .6; }
-.cal .day.today .num { background: var(--primary); color: #fff; border-radius: 999px; padding: 0 .45rem; }
+.cal .day.today .num { background: var(--primary); color: var(--primary-contrast); border-radius: 999px; padding: 0 .45rem; }
 .cal .num { font-size: .8rem; font-weight: 600; align-self: flex-start; }
 .ev { --c: #64748b; display: block; font-size: .74rem; padding: 1px 5px; border-radius: 4px; color: var(--text);
   background: color-mix(in srgb, var(--c) 18%, transparent); border-left: 3px solid var(--c); white-space: nowrap;
@@ -322,3 +322,11 @@ a.card:hover { border-color: var(--primary); text-decoration: none; }
 .pos-table { min-width: 1180px; }
 .pos-table td:nth-child(4) { min-width: 240px; }
 .pos-table th { padding: .45rem .3rem; }
+/* Branding */
+.brand-stack { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.brand img.wordmark { max-width: 190px; max-height: none; width: 100%; height: auto; background: none; padding: 0; border-radius: 0; }
+.brand-stack small { color: #94a3b8; font-weight: 500; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-footer img { vertical-align: -2px; opacity: .8; }
+.auth .logo img { max-width: 260px; max-height: 80px; width: 100%; height: auto; }
+.auth .powered { text-align: center; color: var(--muted); font-size: .78rem; margin: 1.2rem 0 0; }
+.auth .powered img { vertical-align: -2px; }

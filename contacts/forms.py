@@ -1,4 +1,3 @@
-from django import forms
 from django.forms import inlineformset_factory
 
 from core.forms import JFCustomModelForm, JFModelForm
@@ -21,7 +20,3 @@ AddressFormSet = inlineformset_factory(
     Contact, Address, form=JFModelForm, extra=0, can_delete=True,
     fields=["kind", "label", "street", "zip_code", "city", "country", "notes"],
 )
-
-
-class ContactFilterForm(forms.Form):
-    q = forms.CharField(required=False)

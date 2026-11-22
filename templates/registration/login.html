@@ -4,9 +4,13 @@
 <div class="auth">
   <div class="card">
     <div class="logo">
-      {% if company.logo %}<img src="{{ company.logo.url }}" alt="{{ company.name }}">{% else %}<div class="brand" style="justify-content:center;color:inherit"><span class="logo-mark">JF</span><span>JobForge<small>Forge your workflow</small></span></div>{% endif %}
+      {% if company.logo %}<img src="{{ company.logo.url }}" alt="{{ company.name }}">
+      {% else %}<picture>
+        <source srcset="{% static 'branding/logo_dark.svg' %}" media="(prefers-color-scheme: dark)">
+        <img src="{% static 'branding/logo_light.svg' %}" alt="JobForge – Forge your workflow">
+      </picture>{% endif %}
     </div>
-    <h1 style="text-align:center;font-size:1.25rem">{{ company.name|default:"JobForge" }}</h1>
+    {% if company.name and company.name != "Meine Firma" %}<h1 style="text-align:center;font-size:1.15rem">{{ company.name }}</h1>{% endif %}
     {% if form.errors %}<div class="alert alert-danger">Benutzername oder Passwort ist falsch.</div>{% endif %}
     <form method="post">{% csrf_token %}
       <input type="hidden" name="next" value="{{ next }}">
@@ -14,6 +18,7 @@
       <div class="field" style="margin-bottom:1rem"><label for="id_password">Passwort</label>{{ form.password }}</div>
       <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" type="submit">Anmelden</button>
     </form>
+    {% if company.logo %}<p class="powered"><img src="{% static 'branding/favicon.svg' %}" alt="" width="14" height="14"> powered by JobForge</p>{% endif %}
   </div>
 </div>
 {% endblock %}

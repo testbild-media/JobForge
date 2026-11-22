@@ -70,7 +70,8 @@ cmd_restore() {
   systemctl stop jobforge
   if [[ -f "$tmp/database.dump" ]]; then
     runuser -u postgres -- dropdb --if-exists jobforge
-    runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 jobforge
+    runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C.UTF-8 jobforge 2>/dev/null \
+      || runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C jobforge
     as_app pg_restore -h /var/run/postgresql -d jobforge --no-owner "$tmp/database.dump"
   elif [[ -f "$tmp/database.sqlite3" ]]; then
     install -o "$SERVICE_USER" -g "$SERVICE_USER" -m 640 "$tmp/database.sqlite3" "$DATA_DIR/jobforge.sqlite3"

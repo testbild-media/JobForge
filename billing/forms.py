@@ -56,7 +56,7 @@ class LayoutForm(JFModelForm):
     class Meta:
         model = DocumentLayout
         fields = "__all__"
-        widgets = {"accent_color": forms.TextInput(attrs={"placeholder": "#e8590c"}),
+        widgets = {"accent_color": forms.TextInput(attrs={"placeholder": "#ff8900"}),
                    "custom_css": forms.Textarea(attrs={"rows": 6, "class": "mono"})}
 
 

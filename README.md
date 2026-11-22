@@ -1,4 +1,11 @@
-# ⚒ JobForge – Forge your workflow
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/branding/logo_dark.svg">
+    <img src="static/branding/logo_light.svg" alt="JobForge – Forge your workflow" width="460">
+  </picture>
+</p>
+
+# JobForge – Forge your workflow
 
 **JobForge** ist eine webbasierte Open-Source-Software zur Verwaltung und Organisation von Freelancern,
 Selbstständigen sowie kleinen und mittelständischen Betrieben – besonders für technische Dienstleister

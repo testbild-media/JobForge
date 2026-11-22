@@ -8,6 +8,26 @@ from django.db import models, transaction
 from django.utils import timezone
 
 
+def _luminance(hex_color):
+    c = (hex_color or "").lstrip("#")
+    r, g, b = (int(c[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+    def lin(v):
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def readable_text_color(hex_color, dark="#1a1a1a", light="#ffffff"):
+    try:
+        lum = _luminance(hex_color)
+    except (ValueError, IndexError):
+        return light
+    contrast_light = 1.05 / (lum + 0.05)
+    contrast_dark = (lum + 0.05) / (_luminance(dark) + 0.05)
+    return dark if contrast_dark > contrast_light else light
+
+
 class CompanySettings(models.Model):
     """Firmendaten und Branding. Pro Installation genau eine Firma (pk=1)."""
 
@@ -29,8 +49,8 @@ class CompanySettings(models.Model):
     bic = models.CharField("BIC", max_length=11, blank=True)
     account_holder = models.CharField("Kontoinhaber", max_length=200, blank=True)
     logo = models.ImageField("Logo", upload_to="branding/", blank=True)
-    primary_color = models.CharField("Primärfarbe", max_length=7, default="#e8590c")
-    secondary_color = models.CharField("Sekundärfarbe", max_length=7, default="#1f2937")
+    primary_color = models.CharField("Primärfarbe", max_length=7, default="#ff8900")
+    secondary_color = models.CharField("Sekundärfarbe", max_length=7, default="#1a1a1a")
     small_business = models.BooleanField(
         "Kleinunternehmer (§ 19 UStG)", default=False,
         help_text="Rechnungen ohne Umsatzsteuer mit entsprechendem Hinweis.",
@@ -62,6 +82,16 @@ class CompanySettings(models.Model):
     def get(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+    @property
+    def primary_contrast(self):
+        """Lesbare Textfarbe (dunkel oder weiß) für Flächen in der Primärfarbe (WCAG-Kontrast)."""
+        return readable_text_color(self.primary_color)
+
+    @property
+    def sidebar_logo(self):
+        """JobForge-Wortmarke passend zur Sidebar-Farbe (helle Schrift auf dunklem Grund und umgekehrt)."""
+        return "logo_dark.svg" if readable_text_color(self.secondary_color) == "#ffffff" else "logo_light.svg"
 
     @property
     def address_line(self):

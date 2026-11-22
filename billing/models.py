@@ -238,6 +238,7 @@ class Document(models.Model):
     def rows(self):
         """Positionen inkl. Gruppen-Nummerierung und Zwischensummen für Anzeige/PDF."""
         rows, group_no, item_no, group_sum, in_group, running = [], 0, 0, ZERO, False, ZERO
+        current_label = ""
         positions = self._positions()
         for idx, p in enumerate(positions):
             if p.kind == "heading":
