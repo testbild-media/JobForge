@@ -2,7 +2,7 @@
 <html lang="de"><head><meta charset="utf-8"><title>{{ doc.get_doc_type_display }} {{ doc.number|default:"Entwurf" }}</title>
 <style>
 @page { size: A4; margin: 20mm 18mm 32mm 25mm;
-  @bottom-center { content: element(footer); }
+  @bottom-center { content: element(footer); width: 100%; }
   @top-right { content: "Seite " counter(page) " von " counter(pages); font-size: 7.5pt; color: #777; }
 }
 @page :first { @top-right { content: none; } }

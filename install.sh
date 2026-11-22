@@ -210,7 +210,8 @@ if grep -q '^DATABASE_URL=postgres' "$ENV_FILE"; then
   fi
   if ! runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='jobforge'" | grep -q 1; then
     # template0 + UTF8: funktioniert auch, wenn der Cluster ohne System-Locale (SQL_ASCII) angelegt wurde
-    runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C.UTF-8 jobforge 2>/dev/null       || runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C jobforge
+    runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C.UTF-8 jobforge 2>/dev/null \
+      || runuser -u postgres -- createdb -O "$SERVICE_USER" -E UTF8 -T template0 --locale=C jobforge
   fi
   ok "PostgreSQL bereit (Zugriff per Unix-Socket, ohne Passwort)"
 fi
