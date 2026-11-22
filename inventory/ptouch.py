@@ -7,6 +7,7 @@ Etiketten für Brother P-touch-Bandgeräte.
 
 Maße in Punkt (1 pt = 1/72 Zoll). Bandbreiten, Ränder und Formatcodes laut P-touch Editor.
 """
+import functools
 import io
 import zipfile
 from xml.sax.saxutils import escape
@@ -172,14 +173,61 @@ def build_lbx_zip(items, tape=DEFAULT_TAPE):
     return buf.getvalue()
 
 
+def _split_two(text):
+    """Text an dem Leerzeichen trennen, das die Zeilen am gleichmäßigsten aufteilt."""
+    spaces = [i for i, c in enumerate(text) if c == " "]
+    if not spaces:
+        mid = len(text) // 2
+        return [text[:mid], text[mid:]]
+    i = min(spaces, key=lambda s: abs(s - len(text) / 2))
+    return [text[:i], text[i + 1:]]
+
+
 def pdf_lines(lines, geo):
-    """Textzeilen für die PDF-Ausgabe; zu lange Texte werden verkleinert (wie „shrink“ im P-touch Editor)."""
+    """Textzeilen für die PDF-Ausgabe. Zu lange Texte werden verkleinert und – wenn das besser lesbar ist –
+    auf zwei Zeilen umbrochen (wie „Verkleinern“/Zeilenumbruch im P-touch Editor)."""
     out = []
+    avail = geo["text_w"] * 0.96
     for text, line in zip((list(lines) + ["", "", ""])[:3], geo["lines"]):
         text = _clean(text)
-        size = line["size"]
-        em = 0.6 if line["weight"] >= 600 else 0.55  # konservative mittlere Zeichenbreite (fett breiter)
-        if text and len(text) * size * em > geo["text_w"]:
-            size = max(geo["text_w"] / (len(text) * em), 4.5)
-        out.append({"text": text, "size": size, "weight": line["weight"], "y": line["y"], "h": line["h"]})
+        bold = line["weight"] >= 600
+        size, parts = line["size"], [text]
+        width = text_width_per_pt(text, bold)
+        if text and width * size > avail:
+            size = avail / width
+            two = _split_two(text)
+            two_size = min(line["h"] / 2.15, avail / max(text_width_per_pt(p, bold) for p in two))
+            if two_size > size * 1.15:
+                size, parts = two_size, two
+            size = max(size, 3.5)
+        out.append({"text": text, "parts": parts, "size": size, "weight": line["weight"], "y": line["y"],
+                    "h": line["h"]})
     return out
+
+
+FONT_FILES = {
+    True: ["Carlito-Bold.ttf", "calibrib.ttf", "LiberationSans-Bold.ttf", "DejaVuSans-Bold.ttf"],
+    False: ["Carlito-Regular.ttf", "calibri.ttf", "LiberationSans-Regular.ttf", "DejaVuSans.ttf"],
+}
+
+
+@functools.lru_cache(maxsize=4)
+def _measure_font(bold):
+    from PIL import ImageFont
+
+    for name in FONT_FILES[bold]:
+        try:
+            return ImageFont.truetype(name, 100)
+        except OSError:
+            continue
+    return None
+
+
+def text_width_per_pt(text, bold=False):
+    """Breite des Textes in pt je 1 pt Schriftgröße – gemessen mit Calibri/Carlito, sonst geschätzt."""
+    if not text:
+        return 0.0
+    font = _measure_font(bold)
+    if font is None:
+        return len(text) * (0.62 if bold else 0.56)
+    return font.getlength(text) / 100

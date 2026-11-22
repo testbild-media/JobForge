@@ -7,7 +7,8 @@ html, body { margin: 0; padding: 0; color: #000; font-family: Calibri, Carlito, 
 .label:last-child { page-break-after: auto; break-after: auto; }
 .qr { position: absolute; left: {{ geo.edge|floatformat:"1u" }}pt; top: {{ geo.margin|floatformat:"1u" }}pt; width: {{ geo.qr|floatformat:"1u" }}pt; height: {{ geo.qr|floatformat:"1u" }}pt; }
 .qr svg { width: 100% !important; height: 100% !important; display: block; }
-.line { position: absolute; left: {{ geo.text_x|floatformat:"1u" }}pt; width: {{ geo.text_w|floatformat:"1u" }}pt; display: flex; align-items: center; white-space: nowrap; overflow: hidden; line-height: 1.05; }
+.line { position: absolute; left: {{ geo.text_x|floatformat:"1u" }}pt; width: {{ geo.text_w|floatformat:"1u" }}pt; display: flex; flex-direction: column; justify-content: center; white-space: nowrap; overflow: hidden; line-height: 1.05; }
+.line span { display: block; }
 {% if preview %}
 html { background: #e5e7eb; }
 body { padding: 56px 16px 16px; font-family: system-ui, sans-serif; }
@@ -23,7 +24,7 @@ body { padding: 56px 16px 16px; font-family: system-ui, sans-serif; }
 {% for item in items %}
 <div class="label">
   <div class="qr">{{ item.qr_svg|safe }}</div>
-  {% for l in item.pdf_lines %}<div class="line" style="top:{{ l.y|floatformat:"1u" }}pt;height:{{ l.h|floatformat:"1u" }}pt;font-size:{{ l.size|floatformat:"1u" }}pt;font-weight:{{ l.weight }}">{{ l.text }}</div>{% endfor %}
+  {% for l in item.pdf_lines %}<div class="line" style="top:{{ l.y|floatformat:"1u" }}pt;height:{{ l.h|floatformat:"1u" }}pt;font-size:{{ l.size|floatformat:"1u" }}pt;font-weight:{{ l.weight }}">{% for part in l.parts %}<span>{{ part }}</span>{% endfor %}</div>{% endfor %}
 </div>
 {% endfor %}
 </body></html>
