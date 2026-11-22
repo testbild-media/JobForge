@@ -122,7 +122,7 @@ if [[ $UPDATE_ONLY -eq 0 ]]; then
   apt-get update -qq
   PKGS=(git curl ca-certificates python3 python3-venv python3-pip
         libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libharfbuzz-subset0 libffi8 shared-mime-info
-        fonts-dejavu-core fonts-liberation2)
+        fonts-dejavu-core fonts-liberation2 fonts-crosextra-carlito)
   if [[ "$DB" == "postgres" ]]; then PKGS+=(postgresql postgresql-client); else PKGS+=(sqlite3); fi
   # Paketnamen unterscheiden sich je nach Version leicht – fehlende optionale Pakete überspringen
   AVAILABLE=()

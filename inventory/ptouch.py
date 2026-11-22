@@ -178,8 +178,8 @@ def pdf_lines(lines, geo):
     for text, line in zip((list(lines) + ["", "", ""])[:3], geo["lines"]):
         text = _clean(text)
         size = line["size"]
-        estimated = len(text) * size * 0.52  # mittlere Zeichenbreite Calibri ≈ 0,52 em
-        if text and estimated > geo["text_w"]:
-            size = max(geo["text_w"] / (len(text) * 0.52), 4.5)
+        em = 0.6 if line["weight"] >= 600 else 0.55  # konservative mittlere Zeichenbreite (fett breiter)
+        if text and len(text) * size * em > geo["text_w"]:
+            size = max(geo["text_w"] / (len(text) * em), 4.5)
         out.append({"text": text, "size": size, "weight": line["weight"], "y": line["y"], "h": line["h"]})
     return out

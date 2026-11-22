@@ -373,8 +373,9 @@ def labels_ptouch(request):
     stamp = timezone.localtime().strftime("%Y%m%d-%H%M")
     if fmt == "pdf":
         geo = ptouch.layout(tape)
-        for item in items:
-            item["qr_svg"] = make_qr_svg(item["code"], size_mm=geo["qr"] / ptouch.PT_PER_MM)
+        for n, item in enumerate(items):
+            item["qr_svg"] = make_qr_svg(item["code"], size_mm=geo["qr"] / ptouch.PT_PER_MM).replace(
+                'id="qr-path"', f'id="qr-path-{n}"')
             item["pdf_lines"] = ptouch.pdf_lines(item["lines"], geo)
         html = render_to_string("inventory/tape_labels.html", {"items": items, "geo": geo, "tape": tape,
                                                               "preview": False})
