@@ -2,6 +2,7 @@
 {% block detail_actions %}
 {% if perms.inventory.add_location %}<a class="btn" href="{% url 'inventory:location_create' %}?parent={{ object.pk }}">{% icon 'plus' 16 %} Unterort</a>{% endif %}
 <a class="btn" href="{% url 'inventory:labels' %}?kind=location&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>
+<a class="btn" href="{% url 'inventory:labels_ptouch' %}?kind=location&id={{ object.pk }}" title="Bandetikett 24 mm für den P-touch Editor">{% icon 'download' 16 %} P-touch</a>
 {% endblock %}
 {% block detail_body %}
 <div class="grid grid-3">

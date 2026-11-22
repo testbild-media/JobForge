@@ -20,6 +20,7 @@ urlpatterns = [
     path("defekte/", views.defects, name="defects"),
     path("scanner/", views.scan, name="scan"),
     path("etiketten/", views.labels, name="labels"),
+    path("etiketten/ptouch/", views.labels_ptouch, name="labels_ptouch"),
     path("qr/<path:code>.svg", views.qr_svg, name="qr"),
     path("verfuegbarkeit/", views.availability, name="availability"),
     path("artikel-info/", views.article_lookup, name="article_lookup"),

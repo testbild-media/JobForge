@@ -1,7 +1,8 @@
 {% extends "core/crud/detail.html" %}{% load jf %}
 {% block detail_actions %}
 {% if perms.inventory.add_movement and object.is_stocked %}<a class="btn" href="{% url 'inventory:receive' %}?article={{ object.pk }}">{% icon 'download' 16 %} Wareneingang</a>{% endif %}
-{% if object.is_serial %}<a class="btn" href="{% url 'inventory:labels' %}?kind=unit&article={{ object.pk }}">{% icon 'qr' 16 %} Etiketten</a>{% else %}<a class="btn" href="{% url 'inventory:labels' %}?kind=article&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>{% endif %}
+{% if object.is_serial %}<a class="btn" href="{% url 'inventory:labels' %}?kind=unit&article={{ object.pk }}">{% icon 'qr' 16 %} Etiketten</a>{% else %}<a class="btn" href="{% url 'inventory:labels' %}?kind=article&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>
+<a class="btn" href="{% url 'inventory:labels_ptouch' %}?kind=article&id={{ object.pk }}" title="Bandetikett 24 mm für den P-touch Editor">{% icon 'download' 16 %} P-touch</a>{% endif %}
 {% endblock %}
 {% block detail_body %}
 <div class="grid grid-4">

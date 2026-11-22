@@ -2,9 +2,12 @@ import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 
 from core.crud import Crud, color_badge, fmt
@@ -299,26 +302,101 @@ def qr_svg(request, code):
     return resp
 
 
-@login_required
-def labels(request):
-    """Druckbare QR-Etiketten für Geräte, Artikel oder Lagerorte."""
-    items = []
-    ids = [i for i in request.GET.getlist("id") if i.isdigit()]
+LABEL_PERMS = {"unit": "inventory.view_unit", "article": "inventory.view_article",
+               "location": "inventory.view_location"}
+
+
+def _label_items(request):
+    """Etiketteninhalte für Geräte, Artikel oder Lagerorte (Auswahl per ?id=…, sonst alle aktiven)."""
+    from core.models import CompanySettings
+
     kind = request.GET.get("kind", "unit")
+    if kind not in LABEL_PERMS:
+        kind = "unit"
+    if not request.user.has_perm(LABEL_PERMS[kind]):
+        raise PermissionDenied
+    company = CompanySettings.get().name
+    ids = [i for i in request.GET.getlist("id") if i.isdigit()]
+    items = []
     if kind == "unit":
         qs = Unit.objects.select_related("article", "location")
-        if request.GET.get("article"):
+        if request.GET.get("article", "").isdigit():
             qs = qs.filter(article_id=request.GET["article"])
         qs = qs.filter(pk__in=ids) if ids else qs.exclude(condition__in=["lost", "retired"])
-        items = [{"code": u.code, "title": u.article.name, "sub": f"SN {u.serial_number}" if u.serial_number else ""}
-                 for u in qs[:500]]
+        for u in qs[:500]:
+            items.append({"pk": u.pk, "code": u.code, "title": u.article.name,
+                          "sub": f"SN {u.serial_number}" if u.serial_number else "",
+                          "lines": [u.article.name, u.code, company]})
     elif kind == "article":
         qs = Article.objects.filter(pk__in=ids) if ids else Article.objects.filter(active=True)
-        items = [{"code": a.barcode or a.number, "title": a.name, "sub": a.number} for a in qs[:500]]
-    elif kind == "location":
+        for a in qs[:500]:
+            items.append({"pk": a.pk, "code": a.barcode or a.number, "title": a.name, "sub": a.number,
+                          "lines": [a.name, a.number, company]})
+    else:
         qs = Location.objects.filter(pk__in=ids) if ids else Location.objects.filter(active=True)
-        items = [{"code": loc.code, "title": loc.name, "sub": loc.path} for loc in qs[:500]]
-    return render(request, "inventory/labels.html", {"items": items, "kind": kind, "title": "Etiketten"})
+        for loc in qs[:500]:
+            items.append({"pk": loc.pk, "code": loc.code, "title": loc.name, "sub": loc.path,
+                          "lines": [loc.name, loc.code, company]})
+    return kind, items
+
+
+@login_required
+def labels(request):
+    """Druckbare QR-Etiketten (A4-Bogen) sowie Absprung zu P-touch-Bandetiketten."""
+    from .ptouch import DEFAULT_TAPE, TAPES
+
+    kind, items = _label_items(request)
+    query = request.GET.copy()
+    query.pop("tape", None)
+    query.pop("format", None)
+    return render(request, "inventory/labels.html", {
+        "items": items, "kind": kind, "title": "Etiketten", "tapes": TAPES,
+        "tape": request.GET.get("tape", DEFAULT_TAPE), "query": query.urlencode(),
+    })
+
+
+@login_required
+def labels_ptouch(request):
+    """Brother P-touch: .lbx (einzeln bzw. ZIP) oder PDF mit einer Seite je Bandetikett."""
+    from billing.pdf import qr_svg as make_qr_svg
+
+    from . import ptouch
+
+    kind, items = _label_items(request)
+    tape = request.GET.get("tape", ptouch.DEFAULT_TAPE)
+    if tape not in ptouch.TAPES:
+        tape = ptouch.DEFAULT_TAPE
+    if not items:
+        messages.warning(request, "Keine Etiketten ausgewählt.")
+        return redirect(f"{reverse('inventory:labels')}?kind={kind}")
+    fmt = request.GET.get("format", "lbx")
+    stamp = timezone.localtime().strftime("%Y%m%d-%H%M")
+    if fmt == "pdf":
+        geo = ptouch.layout(tape)
+        for item in items:
+            item["qr_svg"] = make_qr_svg(item["code"], size_mm=geo["qr"] / ptouch.PT_PER_MM)
+            item["pdf_lines"] = ptouch.pdf_lines(item["lines"], geo)
+        html = render_to_string("inventory/tape_labels.html", {"items": items, "geo": geo, "tape": tape,
+                                                              "preview": False})
+        try:
+            from weasyprint import HTML
+        except Exception:  # Pango fehlt (z. B. Windows-Entwicklung) – HTML-Druckansicht
+            return HttpResponse(render_to_string("inventory/tape_labels.html", {
+                "items": items, "geo": geo, "tape": tape, "preview": True}))
+        pdf = HTML(string=html).write_pdf()
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = f'inline; filename="etiketten-{tape}mm-{stamp}.pdf"'
+        return resp
+    if len(items) == 1:
+        item = items[0]
+        data = ptouch.build_lbx(item["lines"], item["code"], tape)
+        resp = HttpResponse(data, content_type="application/octet-stream")
+        resp["Content-Disposition"] = f'attachment; filename="{ptouch.safe_filename(item["code"])}.lbx"'
+        return resp
+    data = ptouch.build_lbx_zip(items, tape)
+    resp = HttpResponse(data, content_type="application/zip")
+    resp["Content-Disposition"] = f'attachment; filename="ptouch-{kind}-{tape}mm-{stamp}.zip"'
+    return resp
 
 
 @login_required

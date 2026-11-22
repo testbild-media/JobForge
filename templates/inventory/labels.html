@@ -1,16 +1,42 @@
 {% extends "base.html" %}{% load jf %}
 {% block content %}
-<div class="page-head no-print"><div><h1>Etiketten</h1><div class="sub">{{ items|length }} Etiketten – Druck über den Browser (A4, ohne Ränder empfohlen).</div></div>
+<div class="page-head no-print"><div><h1>Etiketten</h1><div class="sub">{{ items|length }} Etiketten</div></div>
   <div class="actions">
     <a class="btn {% if kind == 'unit' %}btn-primary{% endif %}" href="?kind=unit">Geräte</a>
     <a class="btn {% if kind == 'article' %}btn-primary{% endif %}" href="?kind=article">Artikel</a>
     <a class="btn {% if kind == 'location' %}btn-primary{% endif %}" href="?kind=location">Lagerorte</a>
-    <button class="btn" onclick="window.print()">{% icon 'printer' 16 %} Drucken</button>
   </div></div>
+
+<div class="grid grid-2 no-print">
+  <div class="card">
+    <h3>{% icon 'printer' %} Brother P-touch (Bandetiketten)</h3>
+    <form method="get" action="{% url 'inventory:labels_ptouch' %}" class="inline-form">
+      <input type="hidden" name="kind" value="{{ kind }}">
+      {% for key, values in request.GET.lists %}{% if key != 'tape' and key != 'format' and key != 'kind' %}{% for v in values %}<input type="hidden" name="{{ key }}" value="{{ v }}">{% endfor %}{% endif %}{% endfor %}
+      <div class="field"><label for="tape">Band</label>
+        <select name="tape" id="tape">{% for key, t in tapes.items %}<option value="{{ key }}" {% if key == tape %}selected{% endif %}>{{ t.label }}</option>{% endfor %}</select></div>
+      <button class="btn btn-primary" name="format" value="lbx">{% icon 'download' 16 %} P-touch Editor (.lbx{% if items|length > 1 %} als ZIP{% endif %})</button>
+      <button class="btn" name="format" value="pdf" formtarget="_blank">{% icon 'printer' 16 %} PDF zum Direktdruck</button>
+    </form>
+    <p class="muted" style="margin:.8rem 0 0">
+      <strong>.lbx</strong>: im P-touch Editor öffnen und drucken – QR-Code als echter Barcode, Artikel, interne Nummer, Firma.<br>
+      <strong>PDF</strong>: eine Seite je Etikett – direkt über den Brother-Druckertreiber drucken (Bandbreite wählen, Ränder „keine“, Schnitt nach jedem Etikett). Ideal für viele Etiketten auf einmal.
+    </p>
+  </div>
+  <div class="card">
+    <h3>{% icon 'printer' %} A4-Bogen</h3>
+    <p class="muted">Alle Etiketten unten als QR-Raster auf A4 drucken (z. B. Etikettenbogen oder Papier zum Ausschneiden).</p>
+    <button class="btn" onclick="window.print()">{% icon 'printer' 16 %} A4 drucken</button>
+  </div>
+</div>
+
 <div class="labels">
   {% for i in items %}
-  <div class="qr-label"><img src="{% url 'inventory:qr' i.code %}" alt="">
-    <div><div class="t">{{ i.title|truncatechars:40 }}</div><div class="c">{{ i.code }}</div><div class="s">{{ i.sub|truncatechars:50 }}</div><div class="s">{{ company.name }}</div></div></div>
+  <div>
+    <div class="qr-label"><img src="{% url 'inventory:qr' i.code %}" alt="">
+      <div><div class="t">{{ i.title|truncatechars:40 }}</div><div class="c">{{ i.code }}</div><div class="s">{{ i.sub|truncatechars:50 }}</div><div class="s">{{ company.name }}</div></div></div>
+    <a class="no-print muted" style="font-size:.78rem" href="{% url 'inventory:labels_ptouch' %}?kind={{ kind }}&id={{ i.pk }}&tape={{ tape }}">{% icon 'download' 13 %} .lbx</a>
+  </div>
   {% empty %}<div class="card empty">Keine Einträge.</div>{% endfor %}
 </div>
 {% endblock %}

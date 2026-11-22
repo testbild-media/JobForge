@@ -331,3 +331,87 @@ class PublicUrlTest(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.company.refresh_from_db()
         self.assertEqual(self.company.public_url, "https://jobforge.test.de")
+
+
+class PtouchLabelTest(TestCase):
+    """Brother P-touch: .lbx nach P-touch-Editor-Vorlage, ZIP für mehrere, PDF je Bandetikett."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("jobforge_demo", verbosity=0)
+        cls.admin = User.objects.create_superuser("root", "root@example.com", "pw-root-123")
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def _xml(self, data):
+        import io
+        import zipfile
+
+        z = zipfile.ZipFile(io.BytesIO(data))
+        self.assertEqual(z.namelist(), ["label.xml", "prop.xml"])
+        raw = z.read("label.xml")
+        self.assertTrue(raw.startswith(b'<?xml version="1.0" encoding="UTF-8"?>\n<pt:document'))
+        ET.fromstring(z.read("prop.xml"))
+        return ET.fromstring(raw)
+
+    def test_single_unit_lbx(self):
+        unit = Unit.objects.select_related("article").first()
+        resp = self.client.get(reverse("inventory:labels_ptouch") + f"?kind=unit&id={unit.pk}&tape=24")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(f'{unit.code}.lbx', resp["Content-Disposition"])
+        root = self._xml(resp.content)
+        ns = {"pt": "http://schemas.brother.info/ptouch/2007/lbx/main",
+              "style": "http://schemas.brother.info/ptouch/2007/lbx/style",
+              "text": "http://schemas.brother.info/ptouch/2007/lbx/text",
+              "barcode": "http://schemas.brother.info/ptouch/2007/lbx/barcode"}
+        paper = root.find(".//style:paper", ns)
+        self.assertEqual((paper.get("width"), paper.get("height"), paper.get("format")), ("68pt", "149.6pt", "261"))
+        texts = root.findall(".//text:text", ns)
+        values = [t.find("pt:data", ns).text for t in texts]
+        from core.models import CompanySettings
+        self.assertEqual(values, [unit.article.name, unit.code, CompanySettings.get().name])
+        for t, value in zip(texts, values):
+            self.assertEqual(int(t.find("text:stringItem", ns).get("charLen")), len(value))
+        bc = root.find(".//barcode:barcode", ns)
+        self.assertEqual(bc.find("barcode:barcodeStyle", ns).get("protocol"), "QRCODE")
+        self.assertEqual(bc.find("pt:data", ns).text, unit.code)
+
+    def test_special_chars_and_tapes(self):
+        from inventory import ptouch
+
+        for tape in ptouch.TAPES:
+            root = ET.fromstring(ptouch.label_xml(["Kabel <XLR> & Söhne 😀", "A1", "Müller & Co"], "A1", tape))
+            texts = [e.text for e in root.iter() if e.tag.endswith("}data")]
+            self.assertEqual(texts[0], "Kabel <XLR> & Söhne 😀")
+            items = [e for e in root.iter() if e.tag.endswith("}stringItem")]
+            self.assertEqual(int(items[0].get("charLen")), len("Kabel <XLR> & Söhne 😀") + 1)  # Emoji = 2 UTF-16
+
+    def test_zip_and_pdf(self):
+        import io
+        import zipfile
+
+        article = Article.objects.get(name="Moving Head Spot 300W")
+        resp = self.client.get(reverse("inventory:labels_ptouch") + f"?kind=unit&article={article.pk}&tape=18")
+        self.assertEqual(resp["Content-Type"], "application/zip")
+        names = zipfile.ZipFile(io.BytesIO(resp.content)).namelist()
+        self.assertEqual(len(names), article.units.exclude(condition__in=["lost", "retired"]).count())
+        self.assertTrue(all(n.endswith(".lbx") for n in names))
+        resp = self.client.get(reverse("inventory:labels_ptouch") + "?kind=location&tape=24&format=pdf")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(resp["Content-Type"].split(";")[0], ("application/pdf", "text/html"))
+        if resp["Content-Type"] == "application/pdf":
+            self.assertTrue(resp.content.startswith(b"%PDF"))
+        else:
+            self.assertContains(resp, "Bandetiketten 24 mm")
+            self.assertNotContains(resp, "149,6pt")  # keine deutsche Dezimalschreibweise im CSS
+        self.assertEqual(self.client.get(reverse("inventory:labels") + "?kind=article").status_code, 200)
+
+    def test_permission(self):
+        user = User.objects.get(username="techniker")
+        self.client.force_login(user)
+        resp = self.client.get(reverse("inventory:labels_ptouch") + "?kind=location")
+        self.assertEqual(resp.status_code, 200)  # Mitarbeiter dürfen Lagerorte sehen
+        user.groups.clear()
+        resp = self.client.get(reverse("inventory:labels_ptouch") + "?kind=unit")
+        self.assertEqual(resp.status_code, 403)

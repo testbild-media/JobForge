@@ -1,0 +1,30 @@
+{% load l10n %}{% localize off %}<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Bandetiketten {{ geo.label }}</title>
+<style>
+@page { size: {{ geo.length_mm|floatformat:"2u" }}mm {{ geo.width_mm|floatformat:"2u" }}mm; margin: 0; }
+html, body { margin: 0; padding: 0; color: #000; font-family: Calibri, Carlito, "Liberation Sans", "DejaVu Sans", Arial, sans-serif; }
+.label { position: relative; width: {{ geo.length|floatformat:"1u" }}pt; height: {{ geo.width|floatformat:"1u" }}pt; overflow: hidden; page-break-after: always; break-after: page; background: #fff; }
+.label:last-child { page-break-after: auto; break-after: auto; }
+.qr { position: absolute; left: {{ geo.edge|floatformat:"1u" }}pt; top: {{ geo.margin|floatformat:"1u" }}pt; width: {{ geo.qr|floatformat:"1u" }}pt; height: {{ geo.qr|floatformat:"1u" }}pt; }
+.qr svg { width: 100% !important; height: 100% !important; display: block; }
+.line { position: absolute; left: {{ geo.text_x|floatformat:"1u" }}pt; width: {{ geo.text_w|floatformat:"1u" }}pt; display: flex; align-items: center; white-space: nowrap; overflow: hidden; line-height: 1.05; }
+{% if preview %}
+html { background: #e5e7eb; }
+body { padding: 56px 16px 16px; font-family: system-ui, sans-serif; }
+.bar { position: fixed; top: 0; left: 0; right: 0; background: #1a1a1a; color: #fff; padding: 10px 16px; font: 13px system-ui, sans-serif; }
+.bar a { color: #ff8900; }
+.label { margin: 0 auto 12px; outline: 1px dashed #9ca3af; transform-origin: top center; }
+@media print { html { background: #fff; } body { padding: 0; } .bar { display: none; } .label { margin: 0; outline: none; } }
+{% endif %}
+</style></head>
+<body>
+{% if preview %}<div class="bar">Bandetiketten {{ geo.label }} · {{ items|length }} Stück · {{ geo.length_mm|floatformat:"1u" }} × {{ geo.width_mm|floatformat:"1u" }} mm –
+  <a href="#" onclick="window.print();return false">Drucken</a> (Brother-Drucker wählen, Papier „{{ geo.label }}“, Länge {{ geo.length_mm|floatformat:"0u" }} mm, Ränder: keine)</div>{% endif %}
+{% for item in items %}
+<div class="label">
+  <div class="qr">{{ item.qr_svg|safe }}</div>
+  {% for l in item.pdf_lines %}<div class="line" style="top:{{ l.y|floatformat:"1u" }}pt;height:{{ l.h|floatformat:"1u" }}pt;font-size:{{ l.size|floatformat:"1u" }}pt;font-weight:{{ l.weight }}">{{ l.text }}</div>{% endfor %}
+</div>
+{% endfor %}
+</body></html>
+{% endlocalize %}

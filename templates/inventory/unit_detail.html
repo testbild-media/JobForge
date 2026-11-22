@@ -1,6 +1,7 @@
 {% extends "core/crud/detail.html" %}{% load jf %}
 {% block detail_actions %}
 <a class="btn" href="{% url 'inventory:labels' %}?kind=unit&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>
+<a class="btn" href="{% url 'inventory:labels_ptouch' %}?kind=unit&id={{ object.pk }}" title="Bandetikett 24 mm für den P-touch Editor">{% icon 'download' 16 %} P-touch</a>
 {% if perms.inventory.add_movement %}<a class="btn" href="{% url 'inventory:transfer' %}?unit={{ object.pk }}">{% icon 'repeat' 16 %} Umlagern</a>{% endif %}
 {% endblock %}
 {% block detail_body %}
