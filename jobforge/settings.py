@@ -50,7 +50,11 @@ if not SECRET_KEY:
         "SECRET_KEY ist nicht gesetzt. Bitte in der .env-Datei bzw. /etc/jobforge/jobforge.env eintragen."
     )
 
-ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]")
+# Basisliste erlaubter Hosts (localhost, Server-IPs …). Die öffentliche Domain wird in der Oberfläche
+# eingetragen (Einstellungen › Firma & Branding) und zur Laufzeit von core.middleware.HostCheckMiddleware
+# geprüft – Django selbst lässt daher alle Hosts durch.
+JOBFORGE_ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]")
+ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 
 DATA_DIR = Path(env("DATA_DIR", BASE_DIR / "data"))
@@ -79,11 +83,12 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.HostCheckMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    "core.middleware.CsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

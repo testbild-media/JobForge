@@ -10,6 +10,7 @@
   </div>
 </div>
 
+{% if needs_url %}<div class="alert alert-info">{% icon 'link' %} Noch keine Domain eingetragen. Wenn JobForge über einen Reverse Proxy (z. B. Caddy) unter einer eigenen Adresse läuft, tragen Sie diese unter <a href="{% url 'core:company' %}">Einstellungen › Firma &amp; Branding › Adresse der Installation</a> ein.</div>{% endif %}
 <div class="grid grid-4">
   {% if open_total is not None %}
   <a class="card stat" href="{% url 'billing:open_items' %}"><span class="label">Offene Forderungen</span><span class="value">{{ open_total|money }}</span>

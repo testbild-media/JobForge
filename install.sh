@@ -5,9 +5,9 @@
 #
 #  curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh | sudo bash
 #
-#  Mit Domain + HTTPS (Let's Encrypt):
-#  curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh \
-#    | sudo bash -s -- --domain jobforge.example.com --email admin@example.com
+#  JobForge lauscht danach direkt auf Port 8000. Davor gehört ein eigener Reverse Proxy
+#  (Caddy, Nginx Proxy Manager, Traefik, nginx …), der TLS übernimmt. Die Domain wird in der
+#  Oberfläche eingetragen: Einstellungen › Firma & Branding › Adresse der Installation.
 #
 #  Erneutes Ausführen aktualisiert eine bestehende Installation (Daten bleiben erhalten).
 #  Lizenz: AGPL-3.0-or-later
@@ -16,11 +16,10 @@ set -Eeuo pipefail
 
 REPO_URL="${JOBFORGE_REPO:-https://github.com/testbild-media/JobForge.git}"
 BRANCH="${JOBFORGE_BRANCH:-main}"
-DOMAIN="${JOBFORGE_DOMAIN:-}"
-EMAIL="${JOBFORGE_EMAIL:-}"
-PORT="${JOBFORGE_PORT:-8000}"
+PORT="${JOBFORGE_PORT:-}"
+LISTEN="${JOBFORGE_LISTEN:-}"
+PUBLIC_URL="${JOBFORGE_URL:-}"
 DB="${JOBFORGE_DB:-postgres}"           # postgres | sqlite
-WITH_NGINX="${JOBFORGE_NGINX:-1}"
 ADMIN_USER="${JOBFORGE_ADMIN_USER:-admin}"
 ADMIN_EMAIL="${JOBFORGE_ADMIN_EMAIL:-}"
 DEMO="${JOBFORGE_DEMO:-0}"
@@ -47,11 +46,12 @@ usage() {
 JobForge Installer
 
 Optionen:
-  --domain NAME        Domain (z. B. jobforge.example.com) – aktiviert nginx-vHost
-  --email ADRESSE      E-Mail für Let's Encrypt (mit --domain: HTTPS wird eingerichtet)
+  --port PORT          Port, auf dem JobForge lauscht (Standard 8000)
+  --listen ADRESSE     Netzwerkadresse (Standard 0.0.0.0 = alle; z. B. 127.0.0.1, wenn
+                       der Reverse Proxy auf demselben Server läuft)
+  --url URL            Öffentliche Adresse vorbelegen, z. B. https://jobforge.firma.de
+                       (später jederzeit in der Oberfläche änderbar)
   --sqlite             SQLite statt PostgreSQL verwenden
-  --no-nginx           Kein nginx einrichten (Gunicorn lauscht auf 127.0.0.1:PORT)
-  --port PORT          Interner Gunicorn-Port (Standard 8000)
   --repo URL           Git-Repository (Standard: $REPO_URL)
   --branch NAME        Git-Branch (Standard: $BRANCH)
   --admin-user NAME    Benutzername des ersten Administrators (Standard: admin)
@@ -64,11 +64,10 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --domain) DOMAIN="$2"; shift 2 ;;
-    --email) EMAIL="$2"; shift 2 ;;
-    --sqlite) DB=sqlite; shift ;;
-    --no-nginx) WITH_NGINX=0; shift ;;
     --port) PORT="$2"; shift 2 ;;
+    --listen) LISTEN="$2"; shift 2 ;;
+    --url) PUBLIC_URL="$2"; shift 2 ;;
+    --sqlite) DB=sqlite; shift ;;
     --repo) REPO_URL="$2"; shift 2 ;;
     --branch) BRANCH="$2"; shift 2 ;;
     --admin-user) ADMIN_USER="$2"; shift 2 ;;
@@ -92,6 +91,7 @@ esac
 as_app() { runuser -u "$SERVICE_USER" -- "$@"; }
 manage() { as_app env JOBFORGE_ENV_FILE="$ENV_FILE" "$VENV/bin/python" "$APP_DIR/manage.py" "$@"; }
 rand() { head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c "${1:-50}"; }
+get_env() { [[ -f "$ENV_FILE" ]] && grep -E "^$1=" "$ENV_FILE" | tail -n1 | cut -d= -f2- || true; }
 set_env() {  # set_env KEY VALUE – setzt/ersetzt eine Zeile in der env-Datei
   local key="$1" value="$2"
   if grep -q "^${key}=" "$ENV_FILE"; then
@@ -100,6 +100,17 @@ set_env() {  # set_env KEY VALUE – setzt/ersetzt eine Zeile in der env-Datei
     echo "${key}=${value}" >> "$ENV_FILE"
   fi
 }
+
+# Bestehende Einstellungen übernehmen, wenn nichts anderes angegeben wurde
+OLD_BIND="$(get_env GUNICORN_BIND)"
+[[ -z "$PORT" && -n "$OLD_BIND" ]] && PORT="${OLD_BIND##*:}"
+[[ -z "$PORT" ]] && PORT="$(get_env GUNICORN_PORT)"
+[[ -z "$PORT" ]] && PORT=8000
+[[ -z "$LISTEN" && -n "$OLD_BIND" ]] && LISTEN="${OLD_BIND%:*}"
+# Standard: im Netzwerk lauschen, damit ein Reverse Proxy (auch auf einem anderen Host) zugreifen kann.
+# (Ältere Installationen mit nginx hatten nur GUNICORN_PORT und lauschten auf 127.0.0.1.)
+[[ -z "$LISTEN" ]] && LISTEN=0.0.0.0
+[[ "$PORT" =~ ^[0-9]+$ ]] || die "Ungültiger Port: $PORT"
 
 echo -e "\n${c_ok}  ⚒  JobForge – Forge your workflow${c_off}\n"
 info "System: ${PRETTY_NAME}"
@@ -112,10 +123,7 @@ if [[ $UPDATE_ONLY -eq 0 ]]; then
   PKGS=(git curl ca-certificates python3 python3-venv python3-pip
         libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libharfbuzz-subset0 libffi8 shared-mime-info
         fonts-dejavu-core fonts-liberation2)
-  [[ "$DB" == "postgres" ]] && PKGS+=(postgresql postgresql-client)
-  [[ "$DB" == "sqlite" ]] && PKGS+=(sqlite3)
-  [[ "$WITH_NGINX" == "1" ]] && PKGS+=(nginx)
-  [[ -n "$DOMAIN" && -n "$EMAIL" && "$WITH_NGINX" == "1" ]] && PKGS+=(certbot python3-certbot-nginx)
+  if [[ "$DB" == "postgres" ]]; then PKGS+=(postgresql postgresql-client); else PKGS+=(sqlite3); fi
   # Paketnamen unterscheiden sich je nach Version leicht – fehlende optionale Pakete überspringen
   AVAILABLE=()
   for p in "${PKGS[@]}"; do
@@ -166,15 +174,16 @@ if [[ ! -f "$ENV_FILE" ]]; then
   fi
   cat > "$ENV_FILE" <<EOF
 # JobForge Konfiguration – nach Änderungen: jobforge restart
+# Die öffentliche Domain wird in der Oberfläche eingetragen (Einstellungen › Firma & Branding).
 DEBUG=0
 SECRET_KEY=$(rand 60)
 DATABASE_URL=${DB_URL}
 DATA_DIR=${DATA_DIR}
+# Hostnamen, die immer erlaubt sind (zusätzlich zur Domain aus der Oberfläche)
 ALLOWED_HOSTS=
 CSRF_TRUSTED_ORIGINS=
-HTTPS=0
 TIME_ZONE=Europe/Berlin
-GUNICORN_PORT=${PORT}
+GUNICORN_BIND=${LISTEN}:${PORT}
 GUNICORN_WORKERS=$(( $(nproc) * 2 > 4 ? 4 : $(nproc) * 2 ))
 
 # E-Mail-Versand (optional)
@@ -188,16 +197,12 @@ EOF
 fi
 chown root:"$SERVICE_USER" "$ENV_FILE"
 chmod 640 "$ENV_FILE"
-PORT="$(grep -E '^GUNICORN_PORT=' "$ENV_FILE" | cut -d= -f2 || echo "$PORT")"
-
+set_env GUNICORN_BIND "${LISTEN}:${PORT}"
+sed -i '/^GUNICORN_PORT=/d; /^HTTPS=/d' "$ENV_FILE"   # Altlasten aus Versionen mit nginx
 if [[ $UPDATE_ONLY -eq 0 ]]; then
-  HOSTS="localhost,127.0.0.1"
-  ORIGINS=""
-  [[ -n "$DOMAIN" ]] && HOSTS="$DOMAIN,$HOSTS" && ORIGINS="https://$DOMAIN,http://$DOMAIN"
-  for ip in $IPS; do HOSTS="$HOSTS,$ip"; ORIGINS="${ORIGINS:+$ORIGINS,}http://$ip"; done
-  HOSTS="$HOSTS,$(hostname)"
+  HOSTS="localhost,127.0.0.1,[::1],$(hostname)"
+  for ip in $IPS; do HOSTS="$HOSTS,$ip"; done
   set_env ALLOWED_HOSTS "$HOSTS"
-  set_env CSRF_TRUSTED_ORIGINS "$ORIGINS"
 fi
 
 # --- Datenbank ------------------------------------------------------------------
@@ -225,6 +230,22 @@ if [[ $UPDATE_ONLY -eq 0 ]]; then
   ADMIN_OUT="$(manage jobforge_admin --if-none --username "$ADMIN_USER" --email "$ADMIN_EMAIL" || true)"
   if [[ "$DEMO" == "1" ]]; then manage jobforge_demo || warn "Beispieldaten konnten nicht angelegt werden"; fi
 fi
+if [[ -n "$PUBLIC_URL" ]]; then
+  manage jobforge_settings --public-url "$PUBLIC_URL" >/dev/null
+  ok "Adresse der Installation: $PUBLIC_URL"
+fi
+
+# --- Frühere nginx-Einrichtung von JobForge entfernen -------------------------------
+if [[ -f /etc/nginx/sites-available/jobforge ]] && grep -q "erzeugt von install.sh" /etc/nginx/sites-available/jobforge; then
+  info "Entferne frühere nginx-Konfiguration (JobForge nutzt jetzt den eigenen Reverse Proxy) …"
+  rm -f /etc/nginx/sites-enabled/jobforge /etc/nginx/sites-available/jobforge
+  if [[ -z "$(ls -A /etc/nginx/sites-enabled 2>/dev/null)" ]]; then
+    systemctl disable --now nginx >/dev/null 2>&1 || true
+    ok "nginx gestoppt (keine weiteren Seiten konfiguriert)"
+  else
+    systemctl reload nginx >/dev/null 2>&1 || true
+  fi
+fi
 
 # --- systemd --------------------------------------------------------------------
 info "Richte Dienste ein …"
@@ -241,7 +262,7 @@ Group=${SERVICE_USER}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${ENV_FILE}
 Environment=JOBFORGE_ENV_FILE=${ENV_FILE} LANG=C.UTF-8 PYTHONUNBUFFERED=1
-ExecStart=${VENV}/bin/gunicorn jobforge.wsgi:application --bind 127.0.0.1:\${GUNICORN_PORT} --workers \${GUNICORN_WORKERS} --threads 2 --timeout 120 --access-logfile - --error-logfile -
+ExecStart=${VENV}/bin/gunicorn jobforge.wsgi:application --bind \${GUNICORN_BIND} --workers \${GUNICORN_WORKERS} --threads 2 --timeout 120 --forwarded-allow-ips=* --access-logfile - --error-logfile -
 Restart=always
 RestartSec=3
 NoNewPrivileges=true
@@ -279,82 +300,24 @@ systemctl daemon-reload
 systemctl enable --quiet jobforge.service jobforge-backup.timer
 systemctl restart jobforge.service
 systemctl start jobforge-backup.timer
-ok "Dienst jobforge läuft"
-
-# --- nginx -------------------------------------------------------------------------
-if [[ "$WITH_NGINX" == "1" ]] && command -v nginx >/dev/null 2>&1; then
-  SITE=/etc/nginx/sites-available/jobforge
-  if [[ $UPDATE_ONLY -eq 0 || ! -f "$SITE" ]]; then
-    info "Konfiguriere nginx …"
-    SERVER_NAME="${DOMAIN:-_}"
-    DEFAULT_FLAG=""
-    [[ -z "$DOMAIN" ]] && DEFAULT_FLAG=" default_server"
-    cat > "$SITE" <<EOF
-# JobForge – erzeugt von install.sh
-server {
-    listen 80${DEFAULT_FLAG};
-    listen [::]:80${DEFAULT_FLAG};
-    server_name ${SERVER_NAME};
-
-    client_max_body_size 50M;
-    gzip on;
-    gzip_types text/css application/javascript application/json image/svg+xml;
-
-    location /static/ {
-        alias ${APP_DIR}/staticfiles/;
-        expires 30d;
-        add_header Cache-Control "public";
-        access_log off;
-    }
-
-    location / {
-        proxy_pass http://127.0.0.1:${PORT};
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 120s;
-    }
-}
-EOF
-    ln -sf "$SITE" /etc/nginx/sites-enabled/jobforge
-    [[ -z "$DOMAIN" ]] && rm -f /etc/nginx/sites-enabled/default
-    nginx -t -q
-    systemctl enable --quiet nginx
-    systemctl reload nginx || systemctl restart nginx
-    ok "nginx eingerichtet"
-
-    if [[ -n "$DOMAIN" && -n "$EMAIL" ]] && command -v certbot >/dev/null 2>&1; then
-      info "Beantrage TLS-Zertifikat für $DOMAIN …"
-      if certbot --nginx -d "$DOMAIN" -m "$EMAIL" --agree-tos -n --redirect --quiet; then
-        set_env HTTPS 1
-        systemctl restart jobforge.service
-        ok "HTTPS aktiv"
-      else
-        warn "Zertifikat konnte nicht ausgestellt werden (zeigt die Domain auf diesen Server?). Später: certbot --nginx -d $DOMAIN"
-      fi
-    fi
-  fi
-fi
+ok "Dienst jobforge läuft (${LISTEN}:${PORT})"
 
 # --- Funktionstest ---------------------------------------------------------------
+CHECK_HOST="$LISTEN"
+[[ "$CHECK_HOST" == "0.0.0.0" ]] && CHECK_HOST=127.0.0.1
 for _ in $(seq 1 30); do
-  if curl -fsS "http://127.0.0.1:${PORT}/health/" >/dev/null 2>&1; then break; fi
+  if curl -fsS "http://${CHECK_HOST}:${PORT}/health/" >/dev/null 2>&1; then break; fi
   sleep 1
 done
-curl -fsS "http://127.0.0.1:${PORT}/health/" >/dev/null 2>&1 || die "JobForge antwortet nicht. Logs: journalctl -u jobforge -n 50"
+curl -fsS "http://${CHECK_HOST}:${PORT}/health/" >/dev/null 2>&1 || die "JobForge antwortet nicht. Logs: journalctl -u jobforge -n 50"
 
 # --- Zusammenfassung --------------------------------------------------------------
-if [[ -n "$DOMAIN" ]]; then
-  if grep -q '^HTTPS=1' "$ENV_FILE"; then URL="https://$DOMAIN"; else URL="http://$DOMAIN"; fi
-elif [[ "$WITH_NGINX" == "1" ]]; then
-  URL="http://$(echo "$IPS" | head -n1)"
-else
-  URL="http://127.0.0.1:${PORT}"
-fi
+FIRST_IP="$(echo "$IPS" | head -n1)"
+if [[ "$LISTEN" == "0.0.0.0" ]]; then DIRECT="http://${FIRST_IP:-127.0.0.1}:${PORT}"; else DIRECT="http://${LISTEN}:${PORT}"; fi
+CURRENT_URL="$(manage jobforge_settings 2>/dev/null | sed 's/^Adresse der Installation: //' || true)"
 echo
 echo -e "${c_ok}══════════════════════════════════════════════════════════════${c_off}"
-echo -e "${c_ok}  JobForge ist bereit:${c_off}  $URL"
+echo -e "${c_ok}  JobForge läuft:${c_off}  $DIRECT"
 echo -e "${c_ok}══════════════════════════════════════════════════════════════${c_off}"
 if [[ "$ADMIN_OUT" == *"JOBFORGE_ADMIN_PASSWORD="* ]]; then
   PW="$(echo "$ADMIN_OUT" | grep JOBFORGE_ADMIN_PASSWORD= | cut -d= -f2-)"
@@ -363,6 +326,13 @@ if [[ "$ADMIN_OUT" == *"JOBFORGE_ADMIN_PASSWORD="* ]]; then
   echo "  Anmeldung:  Benutzer '$ADMIN_USER'  ·  Passwort '$PW'"
   echo "  (auch gespeichert in $CONF_DIR/initial-admin.txt – bitte nach dem ersten Login ändern)"
 fi
+echo
+echo "  Reverse Proxy (Caddy o. ä.) auf ${DIRECT#http://} zeigen lassen, z. B. im Caddyfile:"
+echo "      jobforge.firma.de {"
+echo "          reverse_proxy ${FIRST_IP:-127.0.0.1}:${PORT}"
+echo "      }"
+echo "  Domain eintragen: Einstellungen › Firma & Branding › Adresse der Installation"
+echo "  (aktuell: ${CURRENT_URL:-nicht gesetzt})"
 echo
 echo "  Verwaltung:  jobforge status | logs | update | backup | restore | manage …"
 echo "  Konfiguration: $ENV_FILE   Daten: $DATA_DIR   Backups: $BACKUP_DIR"

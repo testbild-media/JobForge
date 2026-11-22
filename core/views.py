@@ -36,7 +36,8 @@ def dashboard(request):
     now = timezone.now()
     week = now + datetime.timedelta(days=7)
     user = request.user
-    ctx = {"title": "Übersicht"}
+    ctx = {"title": "Übersicht",
+           "needs_url": user.has_perm("core.change_companysettings") and not CompanySettings.get().public_url}
     if user.has_perm("projects.view_job"):
         ctx["jobs_running"] = Job.objects.filter(is_template=False, start__lte=now, end__gte=now).select_related(
             "status", "customer")

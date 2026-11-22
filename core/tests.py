@@ -266,3 +266,68 @@ class FlowTest(TestCase):
         self.assertEqual(child.path, "Umbenannt › Raum 1")
         c = Contact.objects.create(company_name="Nummer Test")
         self.assertTrue(c.number.startswith("K"))
+
+
+class PublicUrlTest(TestCase):
+    """Domain aus der Oberfläche: Host-Prüfung, CSRF hinter Reverse Proxy, Secure-Cookies."""
+
+    def setUp(self):
+        from core.hosts import invalidate
+        from core.models import CompanySettings
+
+        invalidate()
+        self.addCleanup(invalidate)  # DB wird nach jedem Test zurückgerollt – Cache ebenfalls leeren
+        self.company = CompanySettings.get()
+        User.objects.create_user("proxyuser", password="pw-proxy-123")
+
+    def set_url(self, url):
+        self.company.public_url = url
+        self.company.save()
+
+    def test_setup_mode_accepts_any_host(self):
+        self.assertEqual(self.client.get("/login/", HTTP_HOST="irgendwas.example").status_code, 200)
+
+    def test_url_is_normalized(self):
+        self.set_url("JobForge.Firma.de/")
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.public_url, "https://jobforge.firma.de")
+
+    def test_host_check(self):
+        self.set_url("https://jobforge.firma.de")
+        self.assertEqual(self.client.get("/login/", HTTP_HOST="jobforge.firma.de").status_code, 200)
+        self.assertEqual(self.client.get("/login/", HTTP_HOST="localhost:8000").status_code, 200)
+        self.assertEqual(self.client.get("/login/", HTTP_HOST="boese.example").status_code, 400)
+        self.assertEqual(self.client.get("/health/", HTTP_HOST="boese.example").status_code, 200)
+
+    def test_csrf_behind_proxy_without_forwarded_proto(self):
+        from django.test import Client
+
+        self.set_url("https://jobforge.firma.de")
+        client = Client(enforce_csrf_checks=True)
+        client.get("/login/", HTTP_HOST="jobforge.firma.de")
+        token = client.cookies["csrftoken"].value
+        resp = client.post("/login/", {"username": "proxyuser", "password": "pw-proxy-123",
+                                       "csrfmiddlewaretoken": token},
+                           HTTP_HOST="jobforge.firma.de", HTTP_ORIGIN="https://jobforge.firma.de")
+        self.assertEqual(resp.status_code, 302)
+        resp = Client(enforce_csrf_checks=True).post(
+            "/login/", {"username": "x"}, HTTP_HOST="jobforge.firma.de", HTTP_ORIGIN="https://boese.example")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_secure_cookies_with_forwarded_proto(self):
+        self.set_url("https://jobforge.firma.de")
+        resp = self.client.post("/login/", {"username": "proxyuser", "password": "pw-proxy-123"},
+                                HTTP_HOST="jobforge.firma.de", HTTP_X_FORWARDED_PROTO="https")
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp.cookies["sessionid"]["secure"])
+
+    def test_settings_form(self):
+        admin = User.objects.create_superuser("root2", "r@example.com", "pw-root-123")
+        self.client.force_login(admin)
+        data = {f.name: getattr(self.company, f.name) for f in self.company._meta.fields
+                if f.name not in ("id", "logo")}
+        data.update(public_url="jobforge.test.de", small_business="")
+        resp = self.client.post("/einstellungen/firma/", data)
+        self.assertEqual(resp.status_code, 302)
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.public_url, "https://jobforge.test.de")

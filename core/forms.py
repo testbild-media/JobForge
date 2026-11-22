@@ -91,7 +91,18 @@ class CompanySettingsForm(JFModelForm):
         widgets = {
             "primary_color": forms.TextInput(attrs={"type": "color"}),
             "secondary_color": forms.TextInput(attrs={"type": "color"}),
+            "public_url": forms.TextInput(attrs={"placeholder": "https://jobforge.firma.de"}),
         }
+
+    def clean_public_url(self):
+        from urllib.parse import urlsplit
+
+        from .hosts import normalize_url
+
+        url = normalize_url(self.cleaned_data.get("public_url"))
+        if url and not urlsplit(url).hostname:
+            raise forms.ValidationError("Bitte eine gültige Adresse angeben, z. B. https://jobforge.firma.de")
+        return url
 
 
 class UserForm(StyledFormMixin, forms.ModelForm):

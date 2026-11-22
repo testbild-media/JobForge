@@ -32,7 +32,13 @@ class CompanySettings(models.Model):
     """Firmendaten und Branding. Pro Installation genau eine Firma (pk=1)."""
 
     name = models.CharField("Firmenname", max_length=200, default="Meine Firma")
-    owner = models.CharField("Inhaber / Geschäftsführung", max_length=200, blank=True)
+    public_url = models.CharField(
+        "Adresse der Installation (URL)", max_length=200, blank=True,
+        help_text="Domain, unter der JobForge über Ihren Reverse Proxy (z. B. Caddy) erreichbar ist, "
+                  "z. B. https://jobforge.firma.de. Wirkt sofort für Host-Prüfung und CSRF-Schutz. "
+                  "Leer = jeder Hostname wird akzeptiert (Ersteinrichtung).",
+    )
+    owner =models.CharField("Inhaber / Geschäftsführung", max_length=200, blank=True)
     street = models.CharField("Straße & Nr.", max_length=200, blank=True)
     zip_code = models.CharField("PLZ", max_length=20, blank=True)
     city = models.CharField("Ort", max_length=100, blank=True)
@@ -75,8 +81,12 @@ class CompanySettings(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
+        from .hosts import invalidate, normalize_url
+
         self.pk = 1
+        self.public_url = normalize_url(self.public_url)
         super().save(*args, **kwargs)
+        invalidate()
 
     @classmethod
     def get(cls):

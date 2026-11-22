@@ -5,7 +5,7 @@
   <div class="card">
     <h2>{% icon 'settings' %} Firma</h2>
     <ul class="timeline">
-      {% if perms.core.change_companysettings %}<li><a href="{% url 'core:company' %}">Firmendaten &amp; Branding</a><br><small>Logo, Farben, Bank, Steuerdaten</small></li>{% endif %}
+      {% if perms.core.change_companysettings %}<li><a href="{% url 'core:company' %}">Firmendaten &amp; Branding</a><br><small>Domain, Logo, Farben, Bank, Steuerdaten</small></li>{% endif %}
       {% if perms.core.view_numbersequence %}<li><a href="{% url 'core:sequence_list' %}">Nummernkreise</a><br><small>Angebote, Rechnungen, Jobs, Artikel …</small></li>{% endif %}
       {% if perms.billing.view_documentlayout %}<li><a href="{% url 'billing:layout_list' %}">Dokumentenlayouts</a><br><small>PDF-Gestaltung, Texte, eigenes CSS</small></li>{% endif %}
     </ul>

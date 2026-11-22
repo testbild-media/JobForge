@@ -26,25 +26,57 @@ Auf einem frischen **Debian 12/13** oder **Ubuntu 22.04/24.04** Server (oder VPS
 curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh | sudo bash
 ```
 
-Mit eigener Domain und automatischem HTTPS-Zertifikat (Let's Encrypt):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh | sudo bash -s -- --domain jobforge.example.com --email admin@example.com
-```
-
-Der Installer richtet alles ein: Python-Umgebung, PostgreSQL, Gunicorn als systemd-Dienst, nginx als
-Reverse Proxy, tägliche Datensicherung und den Verwaltungsbefehl `jobforge`. Am Ende werden URL und
+Der Installer richtet Python-Umgebung, PostgreSQL, Gunicorn als systemd-Dienst, tägliche
+Datensicherung und den Verwaltungsbefehl `jobforge` ein. JobForge lauscht danach direkt auf
+**Port 8000** – einen Reverse Proxy bringt der Installer bewusst nicht mit. Am Ende werden Adresse und
 Zugangsdaten des ersten Administrators angezeigt (zusätzlich in `/etc/jobforge/initial-admin.txt`).
 
 | Option | Bedeutung |
 |---|---|
-| `--domain NAME` | Domain für den nginx-vHost |
-| `--email ADRESSE` | mit `--domain`: TLS-Zertifikat über Let's Encrypt beantragen |
+| `--port PORT` | Port, auf dem JobForge lauscht (Standard `8000`) |
+| `--listen ADRESSE` | Netzwerkadresse (Standard `0.0.0.0`; `127.0.0.1`, wenn der Proxy auf demselben Server läuft) |
+| `--url URL` | öffentliche Adresse vorbelegen, z. B. `https://jobforge.firma.de` (auch später in der Oberfläche) |
 | `--sqlite` | SQLite statt PostgreSQL (sehr kleine Installationen) |
-| `--no-nginx` | kein nginx, Gunicorn lauscht nur auf `127.0.0.1:8000` |
 | `--demo` | Beispieldaten anlegen (Kunden, Lager, Jobs, Personal, Rechnungen) |
 | `--admin-user NAME` / `--admin-email MAIL` | erster Administrator |
 | `--branch NAME` / `--repo URL` | andere Quelle (z. B. Fork) |
+
+### Domain & Reverse Proxy (HTTPS)
+
+Vor JobForge gehört ein Reverse Proxy, der TLS übernimmt – z. B. **Caddy**, Nginx Proxy Manager,
+Traefik oder nginx. Die Domain wird anschließend in der Oberfläche eingetragen:
+**Einstellungen › Firma & Branding › Adresse der Installation** (z. B. `https://jobforge.firma.de`).
+Die Einstellung wirkt sofort für Host-Prüfung und CSRF-Schutz – ohne Neustart. Solange keine Domain
+eingetragen ist, akzeptiert JobForge jeden Hostnamen, damit die Ersteinrichtung klappt.
+
+**Caddy** (holt das Zertifikat automatisch):
+
+```caddy
+jobforge.firma.de {
+    reverse_proxy 10.0.0.20:8000
+}
+```
+
+**nginx:**
+
+```nginx
+server {
+    server_name jobforge.firma.de;
+    client_max_body_size 50M;
+    location / {
+        proxy_pass http://10.0.0.20:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+    # listen 443 ssl; ssl_certificate … (z. B. per certbot)
+}
+```
+
+Wichtig ist nur, dass der Proxy den `Host`-Header und `X-Forwarded-Proto` weitergibt (Caddy, NPM und
+Traefik tun das von sich aus). Dann setzt JobForge auch die Cookies automatisch auf „Secure“.
+Lauscht JobForge im Netzwerk (`0.0.0.0`), sollte Port 8000 per Firewall nur für den Proxy offen sein.
+Kamera-Scan und PWA-Installation erfordern HTTPS.
 
 Mindestanforderung: 1 vCPU, 1 GB RAM, 5 GB Speicher. Empfohlen: 2 vCPU, 2 GB RAM.
 
