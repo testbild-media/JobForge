@@ -3,10 +3,10 @@
 #  JobForge – Forge your workflow
 #  Ein-Zeilen-Installer für Debian 12/13 und Ubuntu 22.04/24.04
 #
-#  curl -fsSL https://raw.githubusercontent.com/__GITHUB_OWNER__/JobForge/main/install.sh | sudo bash
+#  curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh | sudo bash
 #
 #  Mit Domain + HTTPS (Let's Encrypt):
-#  curl -fsSL https://raw.githubusercontent.com/__GITHUB_OWNER__/JobForge/main/install.sh \
+#  curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh \
 #    | sudo bash -s -- --domain jobforge.example.com --email admin@example.com
 #
 #  Erneutes Ausführen aktualisiert eine bestehende Installation (Daten bleiben erhalten).
@@ -14,7 +14,7 @@
 # =============================================================================
 set -Eeuo pipefail
 
-REPO_URL="${JOBFORGE_REPO:-https://github.com/__GITHUB_OWNER__/JobForge.git}"
+REPO_URL="${JOBFORGE_REPO:-https://github.com/testbild-media/JobForge.git}"
 BRANCH="${JOBFORGE_BRANCH:-main}"
 DOMAIN="${JOBFORGE_DOMAIN:-}"
 EMAIL="${JOBFORGE_EMAIL:-}"
@@ -88,7 +88,6 @@ case "${ID:-}:${ID_LIKE:-}" in
   debian:*|ubuntu:*|*:*debian*) ;;
   *) die "Nicht unterstütztes System: ${PRETTY_NAME:-unbekannt}. Unterstützt werden Debian und Ubuntu." ;;
 esac
-[[ "$REPO_URL" == *"__GITHUB_OWNER__"* ]] && die "Repository-URL ist nicht gesetzt. Bitte --repo angeben."
 
 as_app() { runuser -u "$SERVICE_USER" -- "$@"; }
 manage() { as_app env JOBFORGE_ENV_FILE="$ENV_FILE" "$VENV/bin/python" "$APP_DIR/manage.py" "$@"; }

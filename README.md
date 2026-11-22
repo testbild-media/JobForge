@@ -23,13 +23,13 @@ Rechnungsstellung – zentral in einer Anwendung, selbst gehostet auf dem eigene
 Auf einem frischen **Debian 12/13** oder **Ubuntu 22.04/24.04** Server (oder VPS):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/__GITHUB_OWNER__/JobForge/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh | sudo bash
 ```
 
 Mit eigener Domain und automatischem HTTPS-Zertifikat (Let's Encrypt):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/__GITHUB_OWNER__/JobForge/main/install.sh | sudo bash -s -- --domain jobforge.example.com --email admin@example.com
+curl -fsSL https://raw.githubusercontent.com/testbild-media/JobForge/main/install.sh | sudo bash -s -- --domain jobforge.example.com --email admin@example.com
 ```
 
 Der Installer richtet alles ein: Python-Umgebung, PostgreSQL, Gunicorn als systemd-Dienst, nginx als
@@ -63,7 +63,7 @@ sudo jobforge config       # Konfiguration bearbeiten (/etc/jobforge/jobforge.en
 ### Docker
 
 ```bash
-git clone https://github.com/__GITHUB_OWNER__/JobForge.git && cd JobForge
+git clone https://github.com/testbild-media/JobForge.git && cd JobForge
 cp .env.example .env   # SECRET_KEY setzen, DEBUG=0
 docker compose up -d
 docker compose logs jobforge | grep JOBFORGE_ADMIN
@@ -149,7 +149,7 @@ Den persönlichen Token erzeugt jede Person unter *Benutzermenü › API-Zugang*
 Voraussetzung: Python 3.11+ (für PDFs zusätzlich Pango, unter Debian/Ubuntu `libpango-1.0-0`).
 
 ```bash
-git clone https://github.com/__GITHUB_OWNER__/JobForge.git && cd JobForge
+git clone https://github.com/testbild-media/JobForge.git && cd JobForge
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
