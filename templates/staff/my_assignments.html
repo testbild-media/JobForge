@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><h1>Meine Einsätze</h1><div class="actions"><a class="btn" href="{% url 'planning:ics' %}">{% icon 'calendar' 16 %} Kalender abonnieren (.ics)</a><a class="btn btn-primary" href="{% url 'staff:timeentry_list' %}">{% icon 'clock' 16 %} Zeiterfassung</a></div></div>
+{% if not employee %}<div class="alert alert-info">Ihr Benutzerkonto ist keiner Person zugeordnet.</div>{% endif %}
+{% for a in items %}
+<div class="card">
+  <div class="card-head"><h2><a href="{{ a.job.get_absolute_url }}">{{ a.job.title }}</a></h2>{% badge a.get_status_display a.status_color %}</div>
+  <dl class="kv">
+    <dt>Zeit</dt><dd>{{ a.start|date:"l, d.m.Y H:i" }} – {{ a.end|date:"d.m. H:i" }}</dd>
+    {% if a.role %}<dt>Funktion</dt><dd>{{ a.role }}</dd>{% endif %}
+    <dt>Einsatzort</dt><dd>{{ a.job.venue|default:"–" }}{% if a.job.venue_address %}<br>{{ a.job.venue_address }}{% endif %}</dd>
+    {% if a.note %}<dt>Hinweis</dt><dd>{{ a.note }}</dd>{% endif %}
+  </dl>
+  {% if a.status == 'requested' or a.status == 'planned' %}
+  <form method="post" action="{% url 'staff:assignment_status' a.pk %}" class="form-actions">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+    <button class="btn btn-success" name="status" value="confirmed">Zusagen</button><button class="btn btn-danger" name="status" value="declined">Absagen</button>
+  </form>{% endif %}
+</div>
+{% empty %}<div class="card empty">Keine anstehenden Einsätze.</div>{% endfor %}
+{% endblock %}

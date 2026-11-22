@@ -1,0 +1,103 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ object.get_doc_type_display }} {{ object.number|default:"(Entwurf)" }} {% badge object.display_status.1 object.status_color %}</h1>
+    <div class="sub"><a href="{{ object.customer.get_absolute_url }}">{{ object.customer.name }}</a>{% if object.job %} · Job <a href="{{ object.job.get_absolute_url }}">{{ object.job.number }}</a>{% endif %}{% if object.source %} · aus <a href="{{ object.source.get_absolute_url }}">{{ object.source }}</a>{% endif %}</div>
+  </div>
+  <div class="actions">
+    {% if not object.is_locked %}
+      {% if can_change %}<a class="btn" href="{% url 'billing:document_update' object.pk %}">{% icon 'edit' 16 %} Kopfdaten</a>
+      <a class="btn btn-primary" href="{% url 'billing:document_positions' object.pk %}">{% icon 'layers' 16 %} Positionen</a>{% endif %}
+      {% if perms.billing.finalize_document %}<form method="post" action="{% url 'billing:document_finalize' object.pk %}" data-confirm="Dokument festschreiben? Danach sind keine Änderungen an Positionen mehr möglich und die Nummer wird vergeben.">{% csrf_token %}<button class="btn btn-success">{% icon 'check' 16 %} Festschreiben</button></form>{% endif %}
+    {% endif %}
+    <a class="btn" href="{% url 'billing:document_pdf' object.pk %}" target="_blank">{% icon 'printer' 16 %} PDF</a>
+    {% if object.is_invoice %}<a class="btn" href="{% url 'billing:document_xrechnung' object.pk %}">{% icon 'download' 16 %} XRechnung</a>{% endif %}
+    <details class="dropdown"><summary class="btn">Mehr ▾</summary>
+      <div class="dropdown-menu">
+        <a href="{% url 'billing:document_preview' object.pk %}" target="_blank">{% icon 'file' 16 %} HTML-Vorschau</a>
+        <a href="{% url 'billing:document_pdf' object.pk %}?download=1">{% icon 'download' 16 %} PDF herunterladen</a>
+        {% if object.is_locked and can_change %}<a href="{% url 'billing:document_send' object.pk %}">{% icon 'mail' 16 %} Per E-Mail senden</a>
+          <form method="post" action="{% url 'billing:document_status' object.pk %}">{% csrf_token %}<button name="status" value="sent">{% icon 'mail' 16 %} Als versendet markieren</button></form>
+          {% if object.doc_type == 'quote' %}
+          <form method="post" action="{% url 'billing:document_status' object.pk %}">{% csrf_token %}<button name="status" value="accepted">{% icon 'check' 16 %} Angenommen</button></form>
+          <form method="post" action="{% url 'billing:document_status' object.pk %}">{% csrf_token %}<button name="status" value="rejected">{% icon 'x' 16 %} Abgelehnt</button></form>{% endif %}
+        {% endif %}
+        {% if perms.billing.add_document %}<div class="sep"></div>
+          {% if object.doc_type == 'quote' and not object.job %}<form method="post" action="{% url 'billing:document_convert' object.pk %}">{% csrf_token %}<button name="target" value="job">{% icon 'truck' 16 %} Job/Auftrag anlegen</button></form>{% endif %}
+          {% for t, label in convert_targets %}<form method="post" action="{% url 'billing:document_convert' object.pk %}">{% csrf_token %}<button name="target" value="{{ t }}">{% icon 'arrow' 16 %} {{ label }}</button></form>{% endfor %}
+          {% if object.is_invoice and object.is_locked and object.doc_type != 'credit' and object.status != 'cancelled' %}<form method="post" action="{% url 'billing:document_cancel' object.pk %}" data-confirm="Rechnung stornieren? Es wird eine Rechnungskorrektur erstellt.">{% csrf_token %}<button style="color:var(--danger)">{% icon 'x' 16 %} Stornieren</button></form>{% endif %}
+        {% endif %}
+        {% if not object.is_locked and can_delete %}<div class="sep"></div><a href="{% url 'billing:document_delete' object.pk %}" style="color:var(--danger)">{% icon 'trash' 16 %} Entwurf löschen</a>{% endif %}
+      </div>
+    </details>
+  </div>
+</div>
+{% if not pdf_available %}<div class="alert alert-warning">PDF-Erzeugung ist auf diesem System nicht verfügbar (WeasyPrint/Pango fehlt). „PDF“ öffnet die Druckansicht.</div>{% endif %}
+{% if object.is_overdue %}<div class="alert alert-danger">Diese Rechnung ist seit {{ object.due_date|date:"d.m.Y" }} fällig.</div>{% endif %}
+
+<div class="grid grid-4">
+  <div class="card stat"><span class="label">Datum</span><span class="value" style="font-size:1.1rem">{{ object.date|date:"d.m.Y" }}</span>
+    <small>{% if object.valid_until %}gültig bis {{ object.valid_until|date:"d.m.Y" }}{% elif object.due_date %}fällig {{ object.due_date|date:"d.m.Y" }}{% endif %}</small></div>
+  <div class="card stat"><span class="label">Netto</span><span class="value">{{ totals.net_total|money }}</span></div>
+  <div class="card stat"><span class="label">{% if totals.prepaid %}Zahlbetrag{% else %}Brutto{% endif %}</span><span class="value">{{ totals.amount_due|money }}</span>{% if totals.prepaid %}<small>Brutto {{ totals.gross|money }}, abzgl. Abschläge {{ totals.prepaid|money }}</small>{% endif %}</div>
+  {% if object.is_invoice %}<div class="card stat {% if object.is_overdue %}warn{% endif %}"><span class="label">Offen</span><span class="value">{{ object.open_amount|money }}</span><small>bezahlt {{ object.paid_amount|money }}</small></div>{% endif %}
+</div>
+
+<div class="grid grid-3">
+  <div class="card span-2">
+    {% if object.subject %}<h2>{{ object.subject }}</h2>{% endif %}
+    {% if object.intro %}<p style="white-space:pre-line">{{ object.intro }}</p>{% endif %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Pos.</th><th>Beschreibung</th><th class="num">Menge</th><th class="num">Einzelpreis</th><th class="num">Gesamt</th></tr></thead>
+      <tbody>{% for r in rows %}
+        {% if r.type == 'heading' %}<tr class="row-heading"><td>{{ r.number }}</td><td colspan="4">{{ r.pos.description }}</td></tr>
+        {% elif r.type == 'group_total' %}<tr class="row-muted"><td></td><td colspan="3" class="right">Summe {{ r.label }}</td><td class="num">{{ r.total|money }}</td></tr>
+        {% elif r.type == 'subtotal' %}<tr class="row-total"><td></td><td colspan="3" class="right">{{ r.pos.description|default:"Zwischensumme" }}</td><td class="num">{{ r.total|money }}</td></tr>
+        {% elif r.type == 'text' %}<tr><td></td><td colspan="4" style="white-space:pre-line">{{ r.pos.description }}</td></tr>
+        {% elif r.type == 'item' %}<tr><td>{{ r.number }}</td><td><strong>{{ r.pos.title }}</strong>{% if r.pos.details %}<br><small style="white-space:pre-line">{{ r.pos.details }}</small>{% endif %}{% if r.pos.kind == 'rental' and r.pos.factor != 1 %}<br><small>{{ r.pos.factor|num }} Tage</small>{% endif %}{% if r.pos.discount %}<br><small>Rabatt {{ r.pos.discount|num }} %</small>{% endif %}</td>
+          <td class="num">{{ r.pos.quantity|num }} {{ r.pos.unit }}</td><td class="num">{{ r.pos.unit_price|money }}</td><td class="num">{{ r.total|money }}</td></tr>{% endif %}
+      {% empty %}<tr><td colspan="5" class="empty">Noch keine Positionen. <a href="{% url 'billing:document_positions' object.pk %}">Positionen hinzufügen</a></td></tr>{% endfor %}</tbody>
+    </table></div>
+    <div class="sum-box"><table>
+      {% if totals.discount_total %}<tr><td>Positionen</td><td class="num">{{ totals.lines_net|money }}</td></tr><tr><td>Rabatt {{ object.discount_percent|num }} %</td><td class="num">−{{ totals.discount_total|money }}</td></tr>{% endif %}
+      <tr><td>Netto</td><td class="num">{{ totals.net_total|money }}</td></tr>
+      {% for b in totals.breakdown %}{% if not totals.small_business %}<tr><td>USt. {{ b.rate|num }} % auf {{ b.taxable|money }}</td><td class="num">{{ b.tax|money }}</td></tr>{% endif %}{% endfor %}
+      <tr class="grand"><td>Gesamt</td><td class="num">{{ totals.gross|money }}</td></tr>
+      {% for d in totals.deductions %}<tr><td>abzgl. <a href="{{ d.document.get_absolute_url }}">{{ d.document.number }}</a></td><td class="num">−{{ d.gross|money }}</td></tr>{% endfor %}
+      {% if totals.prepaid %}<tr class="grand"><td>Zahlbetrag</td><td class="num">{{ totals.amount_due|money }}</td></tr>{% endif %}
+    </table></div>
+    {% if object.outro %}<p style="white-space:pre-line;margin-top:1rem">{{ object.outro }}</p>{% endif %}
+  </div>
+  <div>
+    <div class="card"><h3>Empfänger</h3><p style="white-space:pre-line">{% if object.recipient %}{{ object.recipient }}{% else %}{{ object.customer.address_text }}{% endif %}</p>
+      <dl class="kv">
+        {% if object.service_start %}<dt>Leistung</dt><dd>{{ object.service_start|date:"d.m.Y" }}{% if object.service_end and object.service_end != object.service_start %} – {{ object.service_end|date:"d.m.Y" }}{% endif %}</dd>{% endif %}
+        <dt>Zahlung</dt><dd>{{ object.payment_term|default:"–" }}</dd>
+        {% if object.buyer_reference %}<dt>Leitweg-ID</dt><dd>{{ object.buyer_reference }}</dd>{% endif %}
+        {% if object.customer_order_ref %}<dt>Bestell-Nr.</dt><dd>{{ object.customer_order_ref }}</dd>{% endif %}
+        <dt>Layout</dt><dd>{{ object.layout|default:"Standard" }}</dd>
+        {% if object.finalized_at %}<dt>Festgeschrieben</dt><dd>{{ object.finalized_at|date:"d.m.Y H:i" }}</dd>{% endif %}
+        {% if object.sent_at %}<dt>Versendet</dt><dd>{{ object.sent_at|date:"d.m.Y H:i" }}</dd>{% endif %}
+      </dl></div>
+    {% if object.is_invoice and object.is_locked and object.doc_type != 'credit' %}
+    <div class="card"><h3>{% icon 'euro' %} Zahlungen</h3>
+      <ul class="timeline">{% for p in payments %}<li>{{ p.date|date:"d.m.Y" }} · <strong>{{ p.amount|money }}</strong> · {{ p.get_method_display }}{% if p.reference %}<br><small>{{ p.reference }}</small>{% endif %}</li>{% empty %}<li class="muted">Noch keine Zahlungen.</li>{% endfor %}</ul>
+      {% if perms.billing.add_payment and object.status != 'cancelled' %}
+      <form method="post" action="{% url 'billing:payment_add' object.pk %}" style="margin-top:.8rem">{% csrf_token %}
+        <input type="hidden" name="document" value="{{ object.pk }}">
+        <div class="form-grid">
+          <div class="field"><label>Datum</label>{{ payment_form.date }}</div>
+          <div class="field"><label>Betrag</label>{{ payment_form.amount }}</div>
+          <div class="field"><label>Zahlart</label>{{ payment_form.method }}</div>
+          <div class="field"><label>Referenz</label>{{ payment_form.reference }}</div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary btn-sm">{% icon 'plus' 14 %} Zahlung erfassen</button></div>
+      </form>{% endif %}
+    </div>{% endif %}
+    {% if derived %}<div class="card"><h3>Folgedokumente</h3><ul class="timeline">{% for d in derived %}<li><a href="{{ d.get_absolute_url }}">{{ d }}</a> {% badge d.display_status.1 d.status_color %}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+{% include "includes/notes.html" %}
+{% include "includes/history.html" %}
+{% endblock %}

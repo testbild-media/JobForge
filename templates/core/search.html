@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><h1>Suche{% if q %}: „{{ q }}“{% endif %}</h1></div>
+{% for label, items in results %}
+<div class="card">
+  <h2>{{ label }} <small>({{ items|length }})</small></h2>
+  <ul class="timeline">{% for o in items %}<li><a href="{{ o.get_absolute_url }}">{{ o }}</a></li>{% endfor %}</ul>
+</div>
+{% empty %}
+<div class="card empty">{% if q %}Keine Treffer.{% else %}Bitte einen Suchbegriff eingeben.{% endif %}</div>
+{% endfor %}
+{% endblock %}

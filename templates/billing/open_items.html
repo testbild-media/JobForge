@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>Offene Posten</h1><div class="sub">{{ documents|length }} offene Rechnungen</div></div>
+  <div class="actions"><a class="btn" href="{% url 'core:export' 'documents' %}">{% icon 'download' 16 %} Export</a></div></div>
+<div class="grid grid-2">
+  <div class="card stat"><span class="label">Offen gesamt</span><span class="value">{{ total|money }}</span></div>
+  <div class="card stat warn"><span class="label">davon überfällig</span><span class="value">{{ overdue_total|money }}</span></div>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Nummer</th><th>Kunde</th><th>Datum</th><th>Fällig</th><th class="num">Betrag</th><th class="num">Bezahlt</th><th class="num">Offen</th><th>Status</th></tr></thead>
+  <tbody>{% for d in documents %}<tr class="clickable {% if d.is_overdue %}row-danger{% endif %}" data-href="{{ d.get_absolute_url }}">
+    <td><a href="{{ d.get_absolute_url }}">{{ d.number }}</a></td><td>{{ d.customer.name }}</td><td>{{ d.date|date:"d.m.Y" }}</td><td>{{ d.due_date|date:"d.m.Y" }}</td>
+    <td class="num">{{ d.amount_due|money }}</td><td class="num">{{ d.paid_amount|money }}</td><td class="num"><strong>{{ d.open_amount|money }}</strong></td><td>{% badge d.display_status.1 d.status_color %}</td></tr>
+  {% empty %}<tr><td colspan="8" class="empty">Keine offenen Posten. 🎉</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

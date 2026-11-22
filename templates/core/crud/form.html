@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>{{ title }}</h1>{% if object %}<div class="sub">{{ object }}</div>{% endif %}</div></div>
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+  <div class="card">{% include "includes/form_fields.html" %}</div>
+  {% for fs, fs_title in formsets %}
+  <div class="card formset" data-formset="{{ fs.prefix }}">
+    <div class="card-head"><h3>{{ fs_title }}</h3>
+      <button type="button" class="btn btn-sm" data-add-form="{{ fs.prefix }}">{% icon 'plus' 15 %} Hinzufügen</button></div>
+    {{ fs.management_form }}
+    {% if fs.non_form_errors %}<div class="alert alert-danger">{{ fs.non_form_errors }}</div>{% endif %}
+    <div class="formset-forms">
+      {% for f in fs %}
+      <fieldset class="formset-form">{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+        <div class="form-grid">{% for field in f.visible_fields %}
+          <div class="field{% if field|field_type == 'CheckboxInput' %} check{% endif %}{% if field.errors %} has-error{% endif %}">
+            {% if field|field_type == 'CheckboxInput' %}{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+            {% if field.errors %}<ul class="errors">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>{% endfor %}</div>
+      </fieldset>
+      {% endfor %}
+    </div>
+    <template data-empty-form="{{ fs.prefix }}">
+      <fieldset class="formset-form">{% for h in fs.empty_form.hidden_fields %}{{ h }}{% endfor %}
+        <div class="form-grid">{% for field in fs.empty_form.visible_fields %}
+          <div class="field{% if field|field_type == 'CheckboxInput' %} check{% endif %}">
+            {% if field|field_type == 'CheckboxInput' %}{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
+          </div>{% endfor %}</div>
+      </fieldset>
+    </template>
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary btn-lg">{% icon 'check' 16 %} Speichern</button>
+    <a class="btn btn-lg" href="{{ cancel_url }}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ object }}</h1><div class="sub">{{ opts.verbose_name }}</div></div>
+  <div class="actions">
+    {% block detail_actions %}{% endblock %}
+    {% if can_change %}<a class="btn btn-primary" href="{{ update_url }}">{% icon 'edit' 16 %} Bearbeiten</a>{% endif %}
+    {% if can_delete %}<a class="btn btn-danger" href="{{ delete_url }}">{% icon 'trash' 16 %}</a>{% endif %}
+  </div>
+</div>
+{% block detail_body %}
+<div class="card"><dl class="kv">{% for label, value in fields %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl></div>
+{% endblock %}
+{% if notes is not None %}{% include "includes/notes.html" %}{% endif %}
+{% include "includes/history.html" %}
+{% endblock %}

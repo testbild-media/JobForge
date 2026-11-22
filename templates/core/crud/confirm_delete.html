@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="card" style="max-width:560px">
+  <h1>Löschen bestätigen</h1>
+  <p>Soll <strong>{{ object }}</strong> ({{ opts.verbose_name }}) wirklich gelöscht werden? Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+  <form method="post">{% csrf_token %}
+    <div class="form-actions">
+      <button class="btn btn-danger btn-lg" type="submit">{% icon 'trash' 16 %} Endgültig löschen</button>
+      <a class="btn btn-lg" href="javascript:history.back()">Abbrechen</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

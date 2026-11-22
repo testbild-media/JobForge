@@ -1,0 +1,191 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ object.title }} {% if object.status %}{% badge object.status.name object.status.color %}{% endif %}{% if object.is_template %} {% badge 'Vorlage' '#6366f1' %}{% endif %}</h1>
+    <div class="sub">{{ object.number }}{% if object.customer %} · <a href="{{ object.customer.get_absolute_url }}">{{ object.customer.name }}</a>{% endif %}{% if object.project %} · Projekt <a href="{{ object.project.get_absolute_url }}">{{ object.project }}</a>{% endif %}</div>
+  </div>
+  <div class="actions">
+    {% if can_change %}<a class="btn btn-primary" href="{% url 'projects:job_update' object.pk %}">{% icon 'edit' 16 %} Bearbeiten</a>
+    <a class="btn" href="{% url 'projects:job_positions' object.pk %}">{% icon 'layers' 16 %} Positionen</a>{% endif %}
+    <a class="btn" href="{% url 'projects:job_packlist' object.pk %}">{% icon 'printer' 16 %} Packliste</a>
+    {% if perms.inventory.add_movement and not object.is_template %}<a class="btn" href="{% url 'projects:job_scan' object.pk %}">{% icon 'scan' 16 %} Ausgabe / Rücknahme</a>{% endif %}
+    <details class="dropdown">
+      <summary class="btn">Mehr ▾</summary>
+      <div class="dropdown-menu">
+        {% if perms.billing.add_document and object.customer and not object.is_template %}
+        <form method="post" action="{% url 'billing:document_from_job' object.pk %}">{% csrf_token %}<button name="doc_type" value="quote">{% icon 'file' 16 %} Angebot erstellen</button></form>
+        <form method="post" action="{% url 'billing:document_from_job' object.pk %}">{% csrf_token %}<button name="doc_type" value="confirmation">{% icon 'check' 16 %} Auftragsbestätigung</button></form>
+        <form method="post" action="{% url 'billing:document_from_job' object.pk %}">{% csrf_token %}<button name="doc_type" value="invoice">{% icon 'euro' 16 %} Rechnung</button></form>
+        <form method="post" action="{% url 'billing:document_from_job' object.pk %}">{% csrf_token %}<button name="doc_type" value="partial">{% icon 'euro' 16 %} Teilrechnung</button></form>
+        <form method="post" action="{% url 'billing:document_from_job' object.pk %}">{% csrf_token %}<button name="doc_type" value="final">{% icon 'euro' 16 %} Schlussrechnung</button></form>
+        <a href="#abschlag" data-tab-link="dokumente">{% icon 'euro' 16 %} Abschlagsrechnung …</a>
+        <div class="sep"></div>
+        {% endif %}
+        {% if perms.projects.add_job %}
+        <form method="post" action="{% url 'projects:job_duplicate' object.pk %}">{% csrf_token %}<button>{% icon 'copy' 16 %} Duplizieren</button></form>
+        {% if not object.is_template %}<form method="post" action="{% url 'projects:job_duplicate' object.pk %}">{% csrf_token %}<input type="hidden" name="template" value="1"><button>{% icon 'copy' 16 %} Als Vorlage speichern</button></form>{% else %}
+        <a href="{% url 'projects:job_from_template' %}?template={{ object.pk }}">{% icon 'plus' 16 %} Job aus dieser Vorlage</a>{% endif %}
+        {% endif %}
+        {% if perms.staff.add_assignment %}<a href="{% url 'staff:assignment_create' %}?job={{ object.pk }}">{% icon 'user' 16 %} Personal einplanen</a>{% endif %}
+        {% if perms.projects.add_task %}<a href="{% url 'projects:task_create' %}?job={{ object.pk }}&next={{ request.path|urlencode }}">{% icon 'tasks' 16 %} Aufgabe</a>{% endif %}
+        {% if perms.projects.add_appointment %}<a href="{% url 'projects:appointment_create' %}?job={{ object.pk }}">{% icon 'clock' 16 %} Termin</a>{% endif %}
+        {% if can_delete %}<div class="sep"></div><a href="{% url 'projects:job_delete' object.pk %}" style="color:var(--danger)">{% icon 'trash' 16 %} Löschen</a>{% endif %}
+      </div>
+    </details>
+  </div>
+</div>
+
+{% if shortages %}<div class="alert alert-danger">{% icon 'alert' %} <strong>Materialengpass:</strong> {% for s in shortages %}{{ s.article.name }} (fehlt {{ s.shortage|num }} {{ s.article.unit }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+
+<div class="grid grid-4">
+  <div class="card stat"><span class="label">Zeitraum</span><span class="value" style="font-size:1.05rem">{% if object.start %}{{ object.start|date:"d.m.Y H:i" }}<br>– {{ object.end|date:"d.m.Y H:i" }}{% else %}nicht terminiert{% endif %}</span>
+    <small>{% if object.prep_start %}Vorb. ab {{ object.prep_start|date:"d.m. H:i" }}{% endif %}{% if object.return_end %} · Rückg. bis {{ object.return_end|date:"d.m. H:i" }}{% endif %}</small></div>
+  <div class="card stat"><span class="label">Auftragswert netto</span><span class="value">{{ net|money }}</span><small>brutto {{ gross|money }} · {{ object.calc_days|num }} Berechnungstag(e)</small></div>
+  <div class="card stat"><span class="label">Personal</span><span class="value">{{ assignments|length }}</span><small>{{ hours|num }} Std. erfasst · Kosten {{ labour_cost|money }}</small></div>
+  <div class="card stat"><span class="label">Status</span>
+    {% if can_change %}<form method="post" action="{% url 'projects:job_status' object.pk %}">{% csrf_token %}
+      <select name="status" onchange="this.form.submit()">{% for s in statuses %}<option value="{{ s.pk }}" {% if s.pk == object.status_id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></form>
+    {% else %}<span class="value">{{ object.status }}</span>{% endif %}
+    <small>{% if object.reserves %}Material ist reserviert{% else %}keine Reservierung{% endif %}</small></div>
+</div>
+
+<nav class="tabs" data-tabs>
+  <a href="#tab-uebersicht" class="active">Übersicht</a>
+  <a href="#tab-positionen">Positionen ({{ positions|length }})</a>
+  <a href="#tab-material">Material{% if shortages %} ⚠{% endif %}</a>
+  <a href="#tab-personal">Personal ({{ assignments|length }})</a>
+  <a href="#tab-aufgaben">Aufgaben &amp; Termine</a>
+  <a href="#tab-dokumente">Dokumente ({{ documents|length }})</a>
+  <a href="#tab-zeiten">Zeiten</a>
+  <a href="#tab-notizen">Notizen &amp; Dateien</a>
+  <a href="#tab-verlauf">Verlauf</a>
+</nav>
+
+<section class="tab-panel active" id="tab-uebersicht">
+  <div class="grid grid-2">
+    <div class="card"><dl class="kv">
+      <dt>Kunde</dt><dd>{% if object.customer %}<a href="{{ object.customer.get_absolute_url }}">{{ object.customer.name }}</a>{% else %}–{% endif %}</dd>
+      <dt>Ansprechpartner</dt><dd>{{ object.contact_person|default:"–" }}</dd>
+      <dt>Verantwortlich</dt><dd>{{ object.manager.get_full_name|default:object.manager|default:"–" }}</dd>
+      <dt>Lagerstandort</dt><dd>{{ object.warehouse|default:"–" }}</dd>
+      <dt>Einsatzort</dt><dd>{{ object.venue|default:"–" }}{% if object.venue_address %}<br>{{ object.venue_address }}{% endif %}</dd>
+      {% for label, value in object.custom_field_values %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}
+    </dl></div>
+    <div class="card">
+      {% if object.description %}<h3>Beschreibung</h3><p style="white-space:pre-line">{{ object.description }}</p>{% endif %}
+      {% if object.internal_notes %}<h3>Interne Notizen</h3><p style="white-space:pre-line">{{ object.internal_notes }}</p>{% endif %}
+      {% if not object.description and not object.internal_notes %}<p class="muted">Keine Beschreibung.</p>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-positionen">
+  <div class="card">
+    <div class="card-head"><h2>Positionen</h2>
+      <div class="actions">
+        {% if can_change %}<form method="post" action="{% url 'projects:job_staff_positions' object.pk %}">{% csrf_token %}<button class="btn btn-sm" name="source" value="assignments">Personal aus Einsätzen übernehmen</button> <button class="btn btn-sm" name="source" value="times">Erfasste Zeiten übernehmen</button></form>
+        <a class="btn btn-sm btn-primary" href="{% url 'projects:job_positions' object.pk %}">{% icon 'edit' 14 %} Bearbeiten</a>{% endif %}</div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Art</th><th>Beschreibung</th><th class="num">Menge</th><th class="num">Preis</th><th class="num">Tage/F.</th><th class="num">Rabatt</th><th class="num">Netto</th></tr></thead>
+      <tbody>{% for p in positions %}
+        {% if p.kind == 'heading' %}<tr class="row-heading"><td colspan="7">{{ p.description }}</td></tr>
+        {% elif p.kind == 'text' %}<tr class="row-muted"><td></td><td colspan="6" style="white-space:pre-line">{{ p.description }}</td></tr>
+        {% else %}<tr><td><small>{{ p.get_kind_display }}</small></td><td style="white-space:pre-line">{% if p.article %}<a href="{{ p.article.get_absolute_url }}">{{ p.description|default:p.article.name }}</a>{% else %}{{ p.description }}{% endif %}</td>
+          <td class="num">{{ p.quantity|num }} {{ p.unit }}</td><td class="num">{{ p.unit_price|money }}</td><td class="num">{{ p.factor|num }}</td><td class="num">{% if p.discount %}{{ p.discount|num }} %{% endif %}</td><td class="num">{{ p.net_total|money }}</td></tr>{% endif %}
+      {% empty %}<tr><td colspan="7" class="empty">Noch keine Positionen.</td></tr>{% endfor %}</tbody>
+      {% if positions %}<tfoot><tr><td colspan="6" class="right">Netto</td><td class="num">{{ net|money }}</td></tr><tr><td colspan="6" class="right">USt.</td><td class="num">{{ tax|money }}</td></tr><tr><td colspan="6" class="right">Brutto</td><td class="num">{{ gross|money }}</td></tr></tfoot>{% endif %}
+    </table></div>
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-material">
+  <div class="card">
+    <div class="card-head"><h2>Material &amp; Verfügbarkeit</h2><div class="actions"><a class="btn btn-sm" href="{% url 'projects:job_packlist' object.pk %}">{% icon 'printer' 14 %} Packliste</a>{% if perms.inventory.add_movement %}<a class="btn btn-sm btn-primary" href="{% url 'projects:job_scan' object.pk %}">{% icon 'scan' 14 %} Ausgabe/Rücknahme</a>{% endif %}</div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Artikel</th><th class="num">Benötigt</th><th class="num">Bestand</th><th class="num">Anderweitig gebucht</th><th class="num">Frei</th><th class="num">Ausgegeben</th><th class="num">Zurück</th><th class="num">Offen</th></tr></thead>
+      <tbody>{% for m in material %}
+        <tr class="{% if m.shortage > 0 %}row-danger{% endif %}"><td><a href="{{ m.article.get_absolute_url }}">{{ m.article.name }}</a>{% if m.conflict_jobs %}<br><small>auch in: {% for j in m.conflict_jobs %}<a href="{{ j.get_absolute_url }}">{{ j.number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</small>{% endif %}</td>
+          <td class="num">{{ m.required|num }}</td><td class="num">{{ m.capacity|num }}</td><td class="num">{{ m.other|num }}</td>
+          <td class="num"><strong>{{ m.available|num }}</strong>{% if m.shortage > 0 %}<br><span class="badge" style="--badge:#dc2626">fehlt {{ m.shortage|num }}</span>{% endif %}</td>
+          <td class="num">{{ m.out|num }}</td><td class="num">{{ m.returned|num }}</td><td class="num">{{ m.open|num }}</td></tr>
+      {% empty %}<tr><td colspan="8" class="empty">Kein Material eingeplant. Material wird über Positionen (Miete/Verkauf mit Artikel) geplant.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% if material and material.0.undated %}<p class="muted">Ohne Datum kann keine Verfügbarkeit geprüft werden.</p>{% endif %}
+  </div>
+  {% if units_out %}<div class="card"><h3>Aktuell ausgegebene Geräte ({{ units_out|length }})</h3>
+    <div class="chips">{% for u in units_out %}<a class="badge" style="--badge:#0284c7" href="{{ u.get_absolute_url }}">{{ u.code }} · {{ u.article.name }}</a>{% endfor %}</div></div>{% endif %}
+</section>
+
+<section class="tab-panel" id="tab-personal">
+  <div class="card">
+    <div class="card-head"><h2>Personaleinsatz</h2><div class="actions">
+      {% if object.start and object.end %}<a class="btn btn-sm" href="{% url 'staff:free_staff' %}?start={{ object.start|date:'Y-m-d\TH:i' }}&end={{ object.end|date:'Y-m-d\TH:i' }}&job={{ object.pk }}">Freies Personal suchen</a>{% endif %}
+      {% if perms.staff.add_assignment %}<a class="btn btn-sm btn-primary" href="{% url 'staff:assignment_create' %}?job={{ object.pk }}">{% icon 'plus' 14 %} Einplanen</a>{% endif %}</div></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Person</th><th>Funktion</th><th>Zeit</th><th>Status</th><th>Satz</th><th>Hinweise</th><th></th></tr></thead>
+      <tbody>{% for a in assignments %}
+        <tr class="{% if a.issues %}row-danger{% endif %}"><td><span class="dot" style="--c:{{ a.employee.color }}"></span> <a href="{{ a.employee.get_absolute_url }}">{{ a.employee }}</a>{% if a.employee.is_freelancer %} <small>(Freelancer)</small>{% endif %}</td>
+          <td>{{ a.role|default:"–" }}{% if a.qualification %}<br><small>{{ a.qualification }}</small>{% endif %}</td>
+          <td class="nowrap">{{ a.start|date:"d.m. H:i" }} – {{ a.end|date:"d.m. H:i" }}<br><small>{{ a.hours|num }} Std.</small></td>
+          <td>{% if perms.staff.change_assignment %}<form method="post" action="{% url 'staff:assignment_status' a.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#tab-personal"><select name="status" onchange="this.form.submit()">{% for k, v in a.STATUSES %}<option value="{{ k }}" {% if k == a.status %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></form>{% else %}{% badge a.get_status_display a.status_color %}{% endif %}</td>
+          <td class="nowrap">{{ a.effective_rate|money }} <small>{{ a.get_rate_type_display }}</small></td>
+          <td>{% for i in a.issues %}<div class="badge" style="--badge:#dc2626;white-space:normal">{{ i }}</div>{% endfor %}</td>
+          <td>{% if perms.staff.change_assignment %}<a class="btn btn-sm btn-ghost" href="{% url 'staff:assignment_update' a.pk %}">{% icon 'edit' 14 %}</a>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="7" class="empty">Noch kein Personal eingeplant.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-aufgaben">
+  <div class="grid grid-2">
+    <div class="card"><div class="card-head"><h3>{% icon 'tasks' %} Aufgaben</h3>{% if perms.projects.add_task %}<a class="btn btn-sm" href="{% url 'projects:task_create' %}?job={{ object.pk }}&next={{ request.path|urlencode }}">{% icon 'plus' 14 %}</a>{% endif %}</div>
+      <ul class="timeline">{% for t in tasks %}<li>
+        <form method="post" action="{% url 'projects:task_toggle' t.pk %}" style="display:inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}#tab-aufgaben"><button class="btn btn-sm btn-ghost">{% if t.done %}☑{% else %}☐{% endif %}</button></form>
+        <span {% if t.done %}style="text-decoration:line-through;color:var(--muted)"{% endif %}>{{ t.title }}</span>
+        {% if t.due_date %}<small class="{% if t.overdue %}badge{% endif %}" style="--badge:#dc2626"> bis {{ t.due_date|date:"d.m." }}</small>{% endif %}
+        {% if t.assignee %}<small> · {{ t.assignee }}</small>{% endif %}
+        <a class="btn btn-sm btn-ghost" href="{% url 'projects:task_update' t.pk %}?next={{ request.path|urlencode }}">{% icon 'edit' 13 %}</a></li>
+      {% empty %}<li class="muted">Keine Aufgaben.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-head"><h3>{% icon 'clock' %} Termine</h3>{% if perms.projects.add_appointment %}<a class="btn btn-sm" href="{% url 'projects:appointment_create' %}?job={{ object.pk }}">{% icon 'plus' 14 %}</a>{% endif %}</div>
+      <ul class="timeline">{% for a in appointments %}<li><span class="dot" style="--c:{{ a.color }}"></span> <a href="{% url 'projects:appointment_update' a.pk %}">{{ a.title }}</a><br><small>{{ a.start|date:"d.m.Y H:i" }}{% if a.location %} · {{ a.location }}{% endif %}</small></li>{% empty %}<li class="muted">Keine Termine.</li>{% endfor %}</ul></div>
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-dokumente">
+  <div class="card">
+    <div class="card-head"><h2>Angebote &amp; Rechnungen</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Nummer</th><th>Art</th><th>Datum</th><th class="num">Brutto</th><th class="num">Offen</th><th>Status</th></tr></thead>
+      <tbody>{% for d in documents %}<tr class="clickable" data-href="{{ d.get_absolute_url }}"><td><a href="{{ d.get_absolute_url }}">{{ d.number|default:"Entwurf" }}</a></td><td>{{ d.get_doc_type_display }}</td><td>{{ d.date|date:"d.m.Y" }}</td><td class="num">{{ d.gross_total|money }}</td><td class="num">{% if d.is_invoice %}{{ d.open_amount|money }}{% endif %}</td><td>{% badge d.display_status.1 d.status_color %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="empty">Noch keine Dokumente.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% if perms.billing.add_document and object.customer %}
+  <div class="card" id="abschlag"><h3>Abschlagsrechnung erstellen</h3>
+    <form method="post" action="{% url 'billing:document_from_job' object.pk %}" class="inline-form">{% csrf_token %}
+      <input type="hidden" name="doc_type" value="advance">
+      <div class="field"><label>Prozent</label>{{ advance_form.percent }}</div>
+      <div class="field"><label>oder Nettobetrag</label>{{ advance_form.amount }}</div>
+      <button class="btn btn-primary">{% icon 'euro' 16 %} Abschlag erstellen</button>
+    </form>
+    <p class="muted" style="margin-top:.6rem">Die Schlussrechnung zieht festgeschriebene Abschlags- und Teilrechnungen dieses Jobs automatisch ab.</p>
+  </div>
+  {% elif not object.customer %}<div class="alert alert-info">Für Angebote und Rechnungen bitte zuerst einen Kunden hinterlegen.</div>{% endif %}
+</section>
+
+<section class="tab-panel" id="tab-zeiten">
+  <div class="card">
+    <div class="card-head"><h2>Arbeitszeiten</h2>{% if perms.staff.add_timeentry %}<a class="btn btn-sm" href="{% url 'staff:timeentry_create' %}?job={{ object.pk }}">{% icon 'plus' 14 %} Zeit erfassen</a>{% endif %}</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Datum</th><th>Person</th><th>Zeit</th><th class="num">Std.</th><th>Tätigkeit</th><th>Status</th></tr></thead>
+      <tbody>{% for t in time_entries %}<tr><td>{{ t.date|date:"d.m.Y" }}</td><td>{{ t.employee }}</td><td>{{ t.start_time|time:"H:i"|default:"" }}–{{ t.end_time|time:"H:i"|default:"" }}</td><td class="num">{{ t.hours|num }}</td><td>{{ t.activity }}</td><td>{% if t.billed %}{% badge 'abgerechnet' '#6366f1' %}{% elif t.approved %}{% badge 'freigegeben' '#16a34a' %}{% else %}{% badge 'offen' '#94a3b8' %}{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="empty">Keine Zeiten erfasst.</td></tr>{% endfor %}</tbody>
+      {% if time_entries %}<tfoot><tr><td colspan="3" class="right">Summe</td><td class="num">{{ hours|num }}</td><td colspan="2">Kosten {{ labour_cost|money }}</td></tr></tfoot>{% endif %}
+    </table></div>
+  </div>
+</section>
+
+<section class="tab-panel" id="tab-notizen">{% include "includes/notes.html" %}</section>
+<section class="tab-panel" id="tab-verlauf">{% include "includes/history.html" %}</section>
+{% endblock %}

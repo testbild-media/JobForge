@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Packliste {{ job.number }}</h1><div class="sub">{{ job.title }}{% if job.customer %} · {{ job.customer.name }}{% endif %}</div></div>
+  <div class="actions"><a class="btn" href="{{ job.get_absolute_url }}">Zurück</a>{% if perms.inventory.add_movement %}<a class="btn" href="{% url 'projects:job_scan' job.pk %}">{% icon 'scan' 16 %} Scan-Ausgabe</a>{% endif %}<button class="btn btn-primary" onclick="window.print()">{% icon 'printer' 16 %} Drucken</button></div>
+</div>
+<div class="card">
+  <dl class="kv" style="margin-bottom:1rem">
+    <dt>Zeitraum</dt><dd>{{ job.start|date:"d.m.Y H:i" }} – {{ job.end|date:"d.m.Y H:i" }}{% if job.prep_start %} (Ladezeit ab {{ job.prep_start|date:"d.m. H:i" }}){% endif %}</dd>
+    <dt>Einsatzort</dt><dd>{{ job.venue|default:"–" }}{% if job.venue_address %}, {{ job.venue_address }}{% endif %}</dd>
+    <dt>Lagerstandort</dt><dd>{{ job.warehouse|default:"–" }}</dd>
+    <dt>Rückgabe bis</dt><dd>{{ job.period_end|date:"d.m.Y H:i"|default:"–" }}</dd>
+  </dl>
+  <div class="table-wrap"><table>
+    <thead><tr><th style="width:30px">✓</th><th>Artikel</th><th class="num">Soll</th><th class="num">Ausgegeben</th><th>Lagerplatz / Geräte</th><th style="width:30px">Rück</th></tr></thead>
+    <tbody>
+    {% regroup rows by group as groups %}
+    {% for g in groups %}
+      <tr class="row-heading"><td colspan="6">{{ g.grouper }}</td></tr>
+      {% for r in g.list %}
+      <tr class="{% if r.done %}row-ok{% elif r.shortage > 0 %}row-danger{% endif %}">
+        <td>{% if r.done %}☑{% else %}☐{% endif %}</td>
+        <td><strong>{{ r.article.name }}</strong><br><small>{{ r.article.number }}{% if r.article.weight_kg %} · {{ r.article.weight_kg|num }} kg/Stk{% endif %}</small></td>
+        <td class="num">{{ r.required|num }} {{ r.article.unit }}</td>
+        <td class="num">{{ r.out_open|num }}</td>
+        <td>{% if r.units %}<span class="mono">{% for u in r.units %}{{ u.code }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% else %}{% for s in r.locations %}<small>{{ s.location }} ({{ s.usable|num }})</small>{% if not forloop.last %}<br>{% endif %}{% empty %}<small class="muted">{{ r.article.default_location|default:"–" }}</small>{% endfor %}{% endif %}</td>
+        <td>☐</td>
+      </tr>
+      {% endfor %}
+    {% empty %}<tr><td colspan="6" class="empty">Keine Materialpositionen.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div class="grid grid-2" style="margin-top:2rem">
+    <div>Gepackt von: ____________________ Datum: __________</div>
+    <div>Zurückgenommen von: ____________________ Datum: __________</div>
+  </div>
+</div>
+{% endblock %}

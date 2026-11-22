@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>Positionen</h1><div class="sub"><a href="{{ job.get_absolute_url }}">{{ job }}</a> · Berechnungstage: {{ job.calc_days|num }}</div></div></div>
+{% include "includes/positions_editor.html" %}
+{% endblock %}

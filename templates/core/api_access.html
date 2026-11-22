@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><h1>API-Zugang</h1></div>
+<div class="grid grid-2">
+<div class="card">
+  <h2>Persönlicher API-Token</h2>
+  <p class="muted">Der Token hat dieselben Rechte wie Ihr Benutzerkonto. Behandeln Sie ihn wie ein Passwort.</p>
+  {% if token %}
+    <div class="field"><label>Token</label><input type="text" readonly value="{{ token.key }}" class="mono" onclick="this.select()"></div>
+    <form method="post" class="form-actions">{% csrf_token %}
+      <button class="btn" name="action" value="create">{% icon 'repeat' 16 %} Neu erzeugen</button>
+      <button class="btn btn-danger" name="action" value="revoke">{% icon 'x' 16 %} Widerrufen</button>
+    </form>
+  {% else %}
+    <form method="post">{% csrf_token %}<button class="btn btn-primary" name="action" value="create">{% icon 'plus' 16 %} Token erzeugen</button></form>
+  {% endif %}
+</div>
+<div class="card">
+  <h2>Beispiel</h2>
+  <pre class="mono" style="white-space:pre-wrap;background:var(--surface-2);padding:.8rem;border-radius:8px">curl -H "Authorization: Token {{ token.key|default:'&lt;TOKEN&gt;' }}" \
+  {{ api_base }}jobs/</pre>
+  <p><a class="btn" href="{% url 'api-docs' %}">{% icon 'file' 16 %} Interaktive API-Dokumentation</a>
+     <a class="btn" href="{% url 'api-schema' %}">OpenAPI-Schema</a></p>
+  <p class="muted">Webhooks für automatisierte Abläufe werden unter <a href="{% url 'core:webhook_list' %}">Einstellungen › Webhooks</a> verwaltet.</p>
+</div>
+</div>
+{% endblock %}

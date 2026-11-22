@@ -1,0 +1,31 @@
+{% extends "core/crud/list.html" %}{% load jf %}
+{% block before_table %}
+<div class="grid grid-2">
+  <div class="card">
+    <h3>{% icon 'clock' %} Stempeluhr</h3>
+    {% if my_employee %}
+      <form method="post" action="{% url 'staff:timer' %}">{% csrf_token %}
+        {% if running %}
+          <p>Läuft seit <strong>{{ running.start_time|time:"H:i" }}</strong>{% if running.job %} für <a href="{{ running.job.get_absolute_url }}">{{ running.job }}</a>{% endif %}{% if running.activity %} – {{ running.activity }}{% endif %}</p>
+          <div class="inline-form"><div class="field"><label>Pause (Min.)</label><input type="number" name="break_minutes" value="{{ running.break_minutes }}" min="0"></div>
+          <button class="btn btn-danger btn-lg">{% icon 'stop' 16 %} Stoppen</button></div>
+        {% else %}
+          <div class="form-grid">
+            <div class="field"><label>Job</label><select name="job"><option value="">– ohne Job –</option>{% for j in timer_jobs %}<option value="{{ j.pk }}">{{ j.number }} {{ j.title }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Tätigkeit</label><input type="text" name="activity" placeholder="z. B. Aufbau"></div>
+          </div>
+          <div class="form-actions"><button class="btn btn-success btn-lg">{% icon 'play' 16 %} Starten</button></div>
+        {% endif %}
+      </form>
+    {% else %}<p class="muted">Ihr Benutzerkonto ist mit keiner Person verknüpft. Verknüpfung unter Personal › Benutzerkonto.</p>{% endif %}
+  </div>
+  <div class="card stat"><span class="label">Summe (Filter)</span><span class="value">{{ sum_hours|num }} Std.</span>
+    <small>{% if can_approve %}Markierte Einträge können unten freigegeben werden.{% endif %}</small></div>
+</div>
+{% if can_approve %}
+<form method="post" action="{% url 'staff:approve_entries' %}" id="approve-form">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <div class="toolbar"><button class="btn btn-sm">{% icon 'check' 14 %} Alle auf dieser Seite freigeben</button></div>
+  {% for row in rows %}{% if not row.obj.approved %}<input type="hidden" name="ids" value="{{ row.obj.pk }}">{% endif %}{% endfor %}
+</form>
+{% endif %}
+{% endblock %}

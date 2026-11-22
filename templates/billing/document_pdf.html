@@ -1,0 +1,122 @@
+{% load jf %}<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>{{ doc.get_doc_type_display }} {{ doc.number|default:"Entwurf" }}</title>
+<style>
+@page { size: A4; margin: 20mm 18mm 32mm 25mm;
+  @bottom-center { content: element(footer); }
+  @top-right { content: "Seite " counter(page) " von " counter(pages); font-size: 7.5pt; color: #777; }
+}
+@page :first { @top-right { content: none; } }
+html { font-family: {{ layout.font_family|default:"DejaVu Sans, Arial, sans-serif" }}; font-size: {{ layout.font_size|stringformat:"s"|default:"9.5" }}pt; color: #222; }
+body { margin: 0; }
+.footer { position: running(footer); width: 100%; font-size: 6.8pt; color: #666; border-top: 0.6pt solid {{ accent }}; padding-top: 2mm; display: flex; justify-content: space-between; gap: 4mm; }
+.footer div { white-space: pre-line; flex: 1; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; {% if layout.logo_position == 'left' %}flex-direction: row-reverse;{% endif %} min-height: 27mm; }
+.head .logo img { max-height: 24mm; max-width: 65mm; }
+.head .company { font-size: 8pt; color: #555; text-align: {% if layout.logo_position == 'left' %}right{% else %}left{% endif %}; white-space: pre-line; }
+.addr-zone { display: flex; justify-content: space-between; margin-top: 8mm; min-height: 45mm; }
+.address { width: 85mm; }
+.sender { font-size: 6.8pt; color: #777; border-bottom: 0.5pt solid #bbb; padding-bottom: 1mm; margin-bottom: 3mm; white-space: nowrap; overflow: hidden; }
+.recipient { white-space: pre-line; font-size: 10pt; line-height: 1.35; }
+.meta { width: 68mm; font-size: 8.5pt; }
+.meta table { width: 100%; border-collapse: collapse; }
+.meta td { padding: 0.6mm 0; }
+.meta td:last-child { text-align: right; }
+h1 { font-size: 15pt; margin: 6mm 0 1mm; color: {{ accent }}; }
+.subject { font-weight: bold; margin-bottom: 4mm; }
+.intro, .outro { white-space: pre-line; margin: 3mm 0; }
+table.items { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+table.items th { text-align: left; font-size: 7.8pt; text-transform: uppercase; color: #555; border-bottom: 1pt solid {{ accent }}; padding: 1.5mm 1mm; }
+table.items td { padding: 1.6mm 1mm; border-bottom: 0.4pt solid #e3e3e3; vertical-align: top; }
+table.items .num { text-align: right; white-space: nowrap; }
+table.items tr.heading td { font-weight: bold; background: #f4f4f4; border-bottom: 0.6pt solid #ccc; }
+table.items tr.gsum td { font-style: italic; color: #444; border-bottom: 0.6pt solid #bbb; }
+table.items tr.subtotal td { font-weight: bold; border-top: 0.8pt solid #999; }
+table.items .details { color: #555; font-size: 8pt; white-space: pre-line; }
+tr { page-break-inside: avoid; }
+.pagebreak { page-break-after: always; }
+.totals { margin-left: auto; width: 82mm; margin-top: 4mm; border-collapse: collapse; page-break-inside: avoid; }
+.totals td { padding: 1mm; }
+.totals td:last-child { text-align: right; white-space: nowrap; }
+.totals .grand td { font-weight: bold; font-size: 10.5pt; border-top: 1pt solid #222; border-bottom: 2.5pt double #222; }
+.note { font-size: 8pt; color: #555; margin-top: 3mm; }
+.pay { display: flex; gap: 5mm; align-items: center; margin-top: 5mm; page-break-inside: avoid; }
+.pay .qr { text-align: center; font-size: 6.5pt; color: #666; }
+.draft { position: fixed; top: 110mm; left: 10mm; font-size: 70pt; color: rgba(200, 0, 0, .08); transform: rotate(-30deg); font-weight: bold; }
+{% if preview %}body { max-width: 210mm; margin: 0 auto; padding: 15mm; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,.15); }
+html { background: #eee; } body { display: flex; flex-direction: column; } .footer { position: static; margin-top: 15mm; order: 99; } .preview-bar { font-family: sans-serif; background: #333; color: #fff; padding: 8px 12px; position: fixed; top: 0; left: 0; right: 0; font-size: 12px; }
+@media print { .preview-bar { display: none; } body { box-shadow: none; padding: 0; } html { background: #fff; } }{% endif %}
+{{ layout.custom_css|safe }}
+</style></head>
+<body>
+{% if preview %}<div class="preview-bar">Druckansicht – <a href="#" onclick="window.print();return false" style="color:#fff">Drucken / als PDF speichern</a></div>{% endif %}
+{% if not doc.is_locked %}<div class="draft">ENTWURF</div>{% endif %}
+<div class="footer">{% for col in footer %}<div>{{ col }}</div>{% endfor %}</div>
+
+<div class="head">
+  <div class="company">{% if not logo %}<strong style="font-size:13pt;color:{{ accent }}">{{ company.name }}</strong>{% endif %}</div>
+  <div class="logo">{% if logo %}<img src="{{ logo }}" alt="">{% endif %}</div>
+</div>
+
+<div class="addr-zone">
+  <div class="address">
+    {% if layout.show_sender_line %}<div class="sender">{{ company.name }} · {{ company.street }} · {{ company.zip_code }} {{ company.city }}</div>{% endif %}
+    <div class="recipient">{{ recipient }}</div>
+  </div>
+  <div class="meta"><table>
+    <tr><td>{{ doc.get_doc_type_display }}-Nr.</td><td><strong>{{ doc.number|default:"Entwurf" }}</strong></td></tr>
+    <tr><td>Datum</td><td>{{ doc.date|date:"d.m.Y" }}</td></tr>
+    <tr><td>Kundennummer</td><td>{{ doc.customer.number }}</td></tr>
+    {% if doc.job %}<tr><td>Auftrag</td><td>{{ doc.job.number }}</td></tr>{% endif %}
+    {% if doc.customer_order_ref %}<tr><td>Ihre Bestellung</td><td>{{ doc.customer_order_ref }}</td></tr>{% endif %}
+    {% if doc.service_start %}<tr><td>Leistungszeitraum</td><td>{{ doc.service_start|date:"d.m.Y" }}{% if doc.service_end and doc.service_end != doc.service_start %} – {{ doc.service_end|date:"d.m.Y" }}{% endif %}</td></tr>{% endif %}
+    {% if doc.valid_until and doc.doc_type == 'quote' %}<tr><td>Gültig bis</td><td>{{ doc.valid_until|date:"d.m.Y" }}</td></tr>{% endif %}
+    {% if doc.due_date and doc.is_invoice and doc.doc_type != 'credit' %}<tr><td>Fällig am</td><td>{{ doc.due_date|date:"d.m.Y" }}</td></tr>{% endif %}
+    {% if doc.buyer_reference %}<tr><td>Leitweg-ID</td><td>{{ doc.buyer_reference }}</td></tr>{% endif %}
+    {% if doc.customer.vat_id %}<tr><td>Ihre USt-IdNr.</td><td>{{ doc.customer.vat_id }}</td></tr>{% endif %}
+  </table></div>
+</div>
+
+<h1>{{ doc.get_doc_type_display }}{% if doc.number %} {{ doc.number }}{% endif %}</h1>
+{% if doc.subject %}<div class="subject">{{ doc.subject }}</div>{% endif %}
+{% if doc.source and doc.doc_type == 'credit' %}<div class="note">Bezug: {{ doc.source.get_doc_type_display }} {{ doc.source.number }} vom {{ doc.source.date|date:"d.m.Y" }}</div>{% endif %}
+{% if doc.intro %}<div class="intro">{{ doc.intro }}</div>{% endif %}
+
+<table class="items">
+  <thead><tr><th style="width:11mm">Pos.</th><th>Bezeichnung</th><th class="num" style="width:22mm">Menge</th><th class="num" style="width:24mm">Einzelpreis</th><th class="num" style="width:26mm">Gesamt</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    {% if r.type == 'heading' %}<tr class="heading"><td>{{ r.number }}</td><td colspan="4">{{ r.pos.description }}</td></tr>
+    {% elif r.type == 'group_total' %}<tr class="gsum"><td></td><td colspan="3" class="num">Summe {{ r.label }}</td><td class="num">{{ r.total|money }}</td></tr>
+    {% elif r.type == 'subtotal' %}<tr class="subtotal"><td></td><td colspan="3" class="num">{{ r.pos.description|default:"Zwischensumme" }}</td><td class="num">{{ r.total|money }}</td></tr>
+    {% elif r.type == 'text' %}<tr><td></td><td colspan="4" class="details">{{ r.pos.description }}</td></tr>
+    {% elif r.type == 'pagebreak' %}</tbody></table><div class="pagebreak"></div><table class="items"><tbody>
+    {% elif r.type == 'item' %}<tr><td>{{ r.number }}</td>
+      <td>{{ r.pos.title }}{% if layout.show_article_numbers and r.pos.article %} <span class="details">({{ r.pos.article.number }})</span>{% endif %}
+        {% if r.pos.details %}<div class="details">{{ r.pos.details }}</div>{% endif %}
+        {% if r.pos.kind == 'rental' and r.pos.factor != 1 %}<div class="details">Mietdauer: {{ r.pos.factor|num }} Tag(e)</div>{% elif r.pos.factor != 1 %}<div class="details">Faktor {{ r.pos.factor|num }}</div>{% endif %}
+        {% if r.pos.discount %}<div class="details">abzgl. {{ r.pos.discount|num }} % Rabatt</div>{% endif %}</td>
+      <td class="num">{{ r.pos.quantity|num }} {{ r.pos.unit }}</td><td class="num">{{ r.pos.unit_price|money }}</td><td class="num">{{ r.total|money }}</td></tr>{% endif %}
+  {% endfor %}
+  </tbody>
+</table>
+
+<table class="totals">
+  {% if totals.discount_total %}<tr><td>Summe Positionen</td><td>{{ totals.lines_net|money }}</td></tr><tr><td>Rabatt {{ doc.discount_percent|num }} %</td><td>−{{ totals.discount_total|money }}</td></tr>{% endif %}
+  <tr><td>Nettobetrag</td><td>{{ totals.net_total|money }}</td></tr>
+  {% if not totals.small_business %}{% for b in totals.breakdown %}<tr><td>zzgl. USt. {{ b.rate|num }} %{% if totals.breakdown|length > 1 %} auf {{ b.taxable|money }}{% endif %}</td><td>{{ b.tax|money }}</td></tr>{% endfor %}{% endif %}
+  <tr class="grand"><td>{% if doc.doc_type == 'credit' %}Gutschriftsbetrag{% else %}Gesamtbetrag{% endif %}</td><td>{{ totals.gross|money }}</td></tr>
+  {% for d in totals.deductions %}<tr><td>abzgl. {{ d.document.get_doc_type_display }} {{ d.document.number }}<br><span style="font-size:7pt;color:#666">netto {{ d.net|money }} + USt. {{ d.tax|money }}</span></td><td>−{{ d.gross|money }}</td></tr>{% endfor %}
+  {% if totals.prepaid %}<tr class="grand"><td>Verbleibender Zahlbetrag</td><td>{{ totals.amount_due|money }}</td></tr>{% endif %}
+</table>
+{% if totals.small_business %}<div class="note">Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.</div>{% endif %}
+
+<div class="pay">
+  <div style="flex:1">
+    {% if payment_text %}<div class="outro" style="margin-top:0">{{ payment_text }}</div>{% endif %}
+    {% if doc.is_invoice and doc.doc_type != 'credit' and company.iban %}<div class="note">Bitte überweisen Sie den Betrag unter Angabe der Rechnungsnummer <strong>{{ doc.number }}</strong> auf: {{ company.bank_name }}, IBAN {{ company.iban }}{% if company.bic %}, BIC {{ company.bic }}{% endif %}.</div>{% endif %}
+    {% if doc.outro %}<div class="outro">{{ doc.outro }}</div>{% endif %}
+    {% if company.owner and doc.outro %}<div>{{ company.owner }}</div>{% endif %}
+  </div>
+  {% if qr_svg %}<div class="qr">{{ qr_svg|safe }}<br>GiroCode</div>{% endif %}
+</div>
+</body></html>

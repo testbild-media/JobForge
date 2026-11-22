@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load jf static %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% if mode == 'return' %}Rücknahme{% else %}Materialausgabe{% endif %}</h1><div class="sub"><a href="{{ job.get_absolute_url }}">{{ job }}</a></div></div>
+  <div class="actions"><a class="btn" href="{% url 'projects:job_packlist' job.pk %}">{% icon 'printer' 16 %} Packliste</a></div>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <form method="post" data-scan-form data-autosubmit>{% csrf_token %}
+      <div class="mode-switch" style="margin-bottom:1rem">
+        <label><input type="radio" name="mode" value="out" {% if mode != 'return' %}checked{% endif %} onchange="location.search='?mode=out'"><span>⬆ Ausgabe</span></label>
+        <label><input type="radio" name="mode" value="return" {% if mode == 'return' %}checked{% endif %} onchange="location.search='?mode=return'"><span>⬇ Rücknahme</span></label>
+      </div>
+      <div class="scanner hidden" data-scanner-view><video playsinline muted></video><div class="frame"></div></div>
+      <div class="field"><label for="id_code">Gerätecode / Barcode scannen</label>
+        <input class="scan-input" type="text" name="code" id="id_code" autofocus autocomplete="off" placeholder="Scannen oder eingeben …"></div>
+      <div class="form-grid" style="margin-top:.8rem">
+        <div class="field"><label for="id_quantity">Menge (Mengenartikel)</label>{{ form.quantity }}</div>
+        <div class="field"><label for="id_article">… oder Artikel wählen</label>{{ form.article }}</div>
+        <div class="field"><label for="id_location">Lagerort (optional)</label>{{ form.location }}</div>
+        {% if mode == 'return' %}<div class="field check"><input type="checkbox" name="defective" id="id_defective"><label for="id_defective">Defekt zurück</label></div>{% endif %}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-lg" data-scanner-start>{% icon 'scan' 18 %} Kamera</button>
+        <button class="btn btn-primary btn-lg" type="submit">{% icon 'check' 18 %} Buchen</button>
+      </div>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Fortschritt</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Artikel</th><th class="num">Soll</th><th class="num">Draußen</th><th class="num">Zurück</th></tr></thead>
+      <tbody>{% for r in rows %}<tr class="{% if r.done and mode != 'return' %}row-ok{% elif mode == 'return' and r.out_open == 0 and r.returned > 0 %}row-ok{% endif %}">
+        <td>{{ r.article.name }}{% if r.units %}<br><small class="mono">{% for u in r.units %}{{ u.code }} {% endfor %}</small>{% endif %}</td>
+        <td class="num">{{ r.required|num }}</td><td class="num"><strong>{{ r.out_open|num }}</strong></td><td class="num">{{ r.returned|num }}</td></tr>
+        {% if mode == 'return' and r.article.kind == 'consumable' and r.out_open > 0 %}<tr><td colspan="4">
+          <form method="post" action="{% url 'projects:job_consume' job.pk %}" class="inline-form">{% csrf_token %}<input type="hidden" name="article" value="{{ r.article.pk }}">
+            <div class="field"><input type="number" step="any" name="quantity" value="{{ r.out_open|stringformat:'s' }}"></div><button class="btn btn-sm">als verbraucht buchen</button></form></td></tr>{% endif %}
+      {% empty %}<tr><td colspan="4" class="empty">Keine Materialpositionen.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <h3 style="margin-top:1rem">Letzte Buchungen</h3>
+    <ul class="timeline">{% for m in recent %}<li><span class="when">{{ m.timestamp|date:"H:i:s" }} · {{ m.user|default:"" }}</span> {{ m.get_kind_display }}: {{ m.quantity|num }} × {{ m.article.name }} {% if m.unit %}<span class="mono">{{ m.unit.code }}</span>{% endif %}</li>{% empty %}<li class="muted">Noch keine Buchungen.</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/scanner.js' %}?v={{ ASSET_VERSION }}"></script>{% endblock %}

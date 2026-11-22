@@ -1,0 +1,26 @@
+{% extends "core/crud/detail.html" %}{% load jf %}
+{% block detail_actions %}
+{% if perms.staff.add_availability %}<a class="btn" href="{% url 'staff:availability_create' %}?employee={{ object.pk }}">{% icon 'clock' 16 %} Abwesenheit</a>{% endif %}
+{% if perms.staff.add_assignment %}<a class="btn" href="{% url 'staff:assignment_create' %}?employee={{ object.pk }}">{% icon 'truck' 16 %} Einplanen</a>{% endif %}
+{% endblock %}
+{% block detail_body %}
+<div class="grid grid-3">
+  <div class="card span-2">
+    <div class="card-head"><h2><span class="dot" style="--c:{{ object.color }}"></span> {{ object }}</h2>{% badge object.get_kind_display '#0ea5e9' %}</div>
+    <dl class="kv">{% for label, value in fields %}{% if value != "–" and label != "Farbe" %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endif %}{% endfor %}</dl>
+  </div>
+  <div class="card">
+    <div class="stat"><span class="label">Stunden diesen Monat</span><span class="value">{{ month_hours|num }}</span>{% if object.weekly_hours %}<small>Soll {{ object.weekly_hours|num }} Std./Woche</small>{% endif %}</div>
+    <h3 style="margin-top:1rem">{% icon 'clock' %} Abwesenheiten</h3>
+    <ul class="timeline">{% for a in availabilities %}<li><span class="dot" style="--c:{{ a.color }}"></span> {{ a.get_kind_display }}: {{ a.start|date:"d.m." }} – {{ a.end|date:"d.m.Y" }}{% if a.note %}<br><small>{{ a.note }}</small>{% endif %}</li>{% empty %}<li class="muted">Keine Einträge.</li>{% endfor %}</ul>
+  </div>
+</div>
+<div class="grid grid-2">
+  <div class="card"><h3>{% icon 'truck' %} Kommende Einsätze</h3>
+    <ul class="timeline">{% for a in upcoming %}<li><span class="when">{{ a.start|date:"D d.m. H:i" }} – {{ a.end|date:"d.m. H:i" }}</span><br><a href="{{ a.job.get_absolute_url }}">{{ a.job }}</a> {% if a.role %}· {{ a.role }}{% endif %} {% badge a.get_status_display a.status_color %}</li>{% empty %}<li class="muted">Keine Einsätze geplant.</li>{% endfor %}</ul></div>
+  <div class="card"><h3>{% icon 'history' %} Letzte Einsätze &amp; Zeiten</h3>
+    <ul class="timeline">{% for a in past %}<li><span class="when">{{ a.start|date:"d.m.Y" }}</span> <a href="{{ a.job.get_absolute_url }}">{{ a.job.title }}</a></li>{% endfor %}
+    {% for e in entries %}<li><span class="when">{{ e.date|date:"d.m.Y" }}</span> {{ e.hours|num }} Std.{% if e.job %} · {{ e.job.number }}{% endif %} {{ e.activity }}</li>{% endfor %}
+    {% if not past and not entries %}<li class="muted">Noch keine Daten.</li>{% endif %}</ul></div>
+</div>
+{% endblock %}

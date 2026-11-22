@@ -1,0 +1,14 @@
+{% load jf %}<div class="card">
+  <div class="card-head"><h3>{% icon 'history' %} Änderungsprotokoll</h3></div>
+  {% if history %}
+  <ul class="timeline">
+    {% for h in history %}
+    <li>
+      <span class="when">{{ h.timestamp|date:"d.m.Y H:i" }} · {{ h.user|default:"System" }}</span><br>
+      <strong>{{ h.get_action_display }}</strong>{% if h.message %}: {{ h.message }}{% endif %}
+      {% if h.changes %}<ul class="changes">{% for k, v in h.changes.items %}<li>{{ k }}: <s>{{ v.0|default:"–" }}</s> → {{ v.1|default:"–" }}</li>{% endfor %}</ul>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="muted">Noch keine Einträge.</p>{% endif %}
+</div>

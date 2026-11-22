@@ -1,0 +1,56 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>Einstellungen</h1><div class="sub">JobForge {{ JOBFORGE_VERSION }}</div></div></div>
+<div class="grid grid-3">
+  <div class="card">
+    <h2>{% icon 'settings' %} Firma</h2>
+    <ul class="timeline">
+      {% if perms.core.change_companysettings %}<li><a href="{% url 'core:company' %}">Firmendaten &amp; Branding</a><br><small>Logo, Farben, Bank, Steuerdaten</small></li>{% endif %}
+      {% if perms.core.view_numbersequence %}<li><a href="{% url 'core:sequence_list' %}">Nummernkreise</a><br><small>Angebote, Rechnungen, Jobs, Artikel …</small></li>{% endif %}
+      {% if perms.billing.view_documentlayout %}<li><a href="{% url 'billing:layout_list' %}">Dokumentenlayouts</a><br><small>PDF-Gestaltung, Texte, eigenes CSS</small></li>{% endif %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon 'euro' %} Finanzen</h2>
+    <ul class="timeline">
+      {% if perms.core.view_taxrate %}<li><a href="{% url 'core:taxrate_list' %}">Steuersätze</a></li>{% endif %}
+      {% if perms.core.view_paymentterm %}<li><a href="{% url 'core:paymentterm_list' %}">Zahlungsbedingungen</a></li>{% endif %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon 'truck' %} Projekte &amp; Lager</h2>
+    <ul class="timeline">
+      {% if perms.projects.view_jobstatus %}<li><a href="{% url 'projects:status_list' %}">Status für Projekte &amp; Jobs</a></li>{% endif %}
+      {% if perms.inventory.view_articlegroup %}<li><a href="{% url 'inventory:group_list' %}">Artikelgruppen</a></li>{% endif %}
+      {% if perms.inventory.view_category %}<li><a href="{% url 'inventory:category_list' %}">Kategorien</a></li>{% endif %}
+      {% if perms.inventory.view_location %}<li><a href="{% url 'inventory:location_list' %}">Lagerstandorte &amp; Lagerplätze</a></li>{% endif %}
+      {% if perms.staff.view_qualification %}<li><a href="{% url 'staff:qualification_list' %}">Qualifikationen</a></li>{% endif %}
+      {% if perms.core.view_customfielddefinition %}<li><a href="{% url 'core:customfield_list' %}">Zusatzfelder</a></li>{% endif %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon 'users' %} Benutzer &amp; Rechte</h2>
+    <ul class="timeline">
+      {% if perms.auth.view_user %}<li><a href="{% url 'core:user_list' %}">Benutzer</a></li>{% endif %}
+      {% if perms.auth.view_group %}<li><a href="{% url 'core:group_list' %}">Rollen &amp; Berechtigungen</a></li>{% endif %}
+      {% if perms.core.view_auditlog %}<li><a href="{% url 'core:audit_list' %}">Änderungsprotokoll</a></li>{% endif %}
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon 'link' %} Schnittstellen</h2>
+    <ul class="timeline">
+      <li><a href="{% url 'core:api_access' %}">API-Zugang (Token)</a></li>
+      <li><a href="{% url 'api-docs' %}">API-Dokumentation</a></li>
+      {% if perms.core.view_webhook %}<li><a href="{% url 'core:webhook_list' %}">Webhooks</a></li>{% endif %}
+      <li><a href="{% url 'planning:ics' %}">Kalender-Export (iCal)</a></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>{% icon 'download' %} Daten</h2>
+    <ul class="timeline">
+      <li><a href="{% url 'core:import_export' %}">Import &amp; Export (CSV)</a></li>
+      {% if request.user.is_superuser %}<li><a href="{% url 'core:backup' %}">Datensicherung herunterladen (JSON)</a><br><small>Vollständige Sicherung inkl. Dateien: <code>sudo jobforge backup</code></small></li>{% endif %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

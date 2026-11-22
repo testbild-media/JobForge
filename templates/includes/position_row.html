@@ -1,0 +1,18 @@
+{% load jf %}<tr class="pos-row{% if f.kind.value == 'heading' %} pos-heading{% endif %}" data-pos-row>
+  <td class="w-order">{% for h in f.hidden_fields %}{{ h }}{% endfor %}<input type="number" name="{{ f.order.html_name }}" value="{{ f.order.value|default_if_none:0 }}" class="w-order" data-f="order" aria-label="Reihenfolge">
+    <div class="nowrap" style="margin-top:2px"><button type="button" class="btn btn-ghost btn-sm" data-move="-1" title="Nach oben">▲</button><button type="button" class="btn btn-ghost btn-sm" data-move="1" title="Nach unten">▼</button></div></td>
+  <td class="w-kind">{{ f.kind }}{% if f.errors %}<ul class="errorlist">{% for field in f %}{% for e in field.errors %}<li>{{ field.label }}: {{ e }}</li>{% endfor %}{% endfor %}{% for e in f.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}</td>
+  <td class="w-article"><select name="{{ f.article.html_name }}" data-f="article" aria-label="Artikel">
+    <option value="">–</option>
+    {% for a in articles %}<option value="{{ a.pk }}" {% if f.article.value|stringformat:"s" == a.pk|stringformat:"s" %}selected{% endif %}>{{ a.name }} ({{ a.number }})</option>{% endfor %}
+  </select></td>
+  <td><textarea name="{{ f.description.html_name }}" rows="1" data-f="description" aria-label="Beschreibung">{{ f.description.value|default:'' }}</textarea></td>
+  <td class="w-num"><input type="number" step="any" name="{{ f.quantity.html_name }}" value="{{ f.quantity.value|default_if_none:1|stringformat:'s' }}" data-f="quantity" aria-label="Menge"></td>
+  <td class="w-sm"><input type="text" name="{{ f.unit.html_name }}" value="{{ f.unit.value|default:'' }}" list="unit-list" data-f="unit" aria-label="Einheit"></td>
+  <td class="w-num"><input type="number" step="any" name="{{ f.unit_price.html_name }}" value="{{ f.unit_price.value|default_if_none:0|stringformat:'s' }}" data-f="unit_price" aria-label="Einzelpreis"></td>
+  <td class="w-sm"><input type="number" step="any" name="{{ f.factor.html_name }}" value="{{ f.factor.value|default_if_none:1|stringformat:'s' }}" data-f="factor" aria-label="Faktor"></td>
+  <td class="w-sm"><input type="number" step="any" name="{{ f.discount.html_name }}" value="{{ f.discount.value|default_if_none:0|stringformat:'s' }}" data-f="discount" aria-label="Rabatt"></td>
+  <td class="w-sm"><input type="number" step="any" name="{{ f.tax_rate.html_name }}" value="{{ f.tax_rate.value|default_if_none:19|stringformat:'s' }}" data-f="tax_rate" aria-label="USt"></td>
+  <td class="w-total" data-line-total>–</td>
+  <td>{% if f.DELETE %}<label class="btn btn-ghost btn-sm" title="Entfernen"><input type="checkbox" name="{{ f.DELETE.html_name }}" data-delete style="display:none" {% if f.DELETE.value %}checked{% endif %}>{% icon 'trash' 15 %}</label>{% endif %}</td>
+</tr>

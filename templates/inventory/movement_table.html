@@ -1,0 +1,3 @@
+{% load jf %}<div class="table-wrap"><table><thead><tr><th>Zeitpunkt</th><th>Vorgang</th><th>Gerät</th><th class="num">Menge</th><th>Von</th><th>Nach</th><th>Job</th><th>Benutzer</th><th>Bemerkung</th></tr></thead>
+<tbody>{% for m in movements %}<tr><td class="nowrap">{{ m.timestamp|date:"d.m.Y H:i" }}</td><td>{{ m.get_kind_display }}</td><td class="mono">{{ m.unit.code|default:"" }}</td><td class="num">{{ m.quantity|num }}</td><td>{{ m.from_location|default:"" }}</td><td>{{ m.to_location|default:"" }}</td><td>{% if m.job %}<a href="{{ m.job.get_absolute_url }}">{{ m.job.number }}</a>{% endif %}</td><td>{{ m.user|default:"" }}</td><td>{{ m.note }}</td></tr>
+{% empty %}<tr><td colspan="9" class="empty">Keine Bewegungen.</td></tr>{% endfor %}</tbody></table></div>

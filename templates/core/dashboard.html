@@ -1,0 +1,95 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Guten Tag{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}!</h1>
+    <div class="sub">{% now "l, d. F Y" %}</div></div>
+  <div class="actions">
+    {% if perms.projects.add_job %}<a class="btn btn-primary" href="{% url 'projects:job_create' %}">{% icon 'plus' 16 %} Neuer Job</a>{% endif %}
+    {% if perms.billing.add_document %}<a class="btn" href="{% url 'billing:document_create' %}?doc_type=quote">{% icon 'file' 16 %} Angebot</a>{% endif %}
+    <a class="btn" href="{% url 'inventory:scan' %}">{% icon 'scan' 16 %} Scannen</a>
+  </div>
+</div>
+
+<div class="grid grid-4">
+  {% if open_total is not None %}
+  <a class="card stat" href="{% url 'billing:open_items' %}"><span class="label">Offene Forderungen</span><span class="value">{{ open_total|money }}</span>
+    <small>{% if overdue %}{{ overdue|length }} überfällig ({{ overdue_total|money }}){% else %}nichts überfällig{% endif %}</small></a>
+  <a class="card stat" href="{% url 'billing:document_list' %}?art=rechnungen"><span class="label">Umsatz (Monat, netto)</span><span class="value">{{ month_revenue|money }}</span>
+    <small>{{ open_quotes }} offene Angebote · {{ drafts }} Entwürfe</small></a>
+  {% endif %}
+  {% if material_conflicts is not None %}
+  <a class="card stat {% if material_conflicts %}warn{% endif %}" href="{% url 'planning:conflicts' %}"><span class="label">Materialkonflikte (30 T.)</span><span class="value">{{ material_conflicts|length }}</span>
+    <small>{{ staff_conflicts|length|default:0 }} Personalkonflikte</small></a>
+  <a class="card stat {% if defects %}warn{% endif %}" href="{% url 'inventory:defects' %}"><span class="label">Defekte / Ausgegeben</span><span class="value">{{ defects }} / {{ units_out }}</span>
+    <small>{% if low_stock %}{{ low_stock|length }} unter Mindestbestand{% else %}Bestände in Ordnung{% endif %}</small></a>
+  {% endif %}
+</div>
+
+<div class="grid grid-2">
+  {% if jobs_running is not None %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'truck' %} Laufende &amp; kommende Jobs</h2><a href="{% url 'projects:job_list' %}?zeit=upcoming">Alle</a></div>
+    <div class="table-wrap"><table>
+      {% for j in jobs_running %}<tr class="row-ok clickable" data-href="{{ j.get_absolute_url }}"><td><a href="{{ j.get_absolute_url }}">{{ j.number }}</a></td><td>{{ j.title }}<br><small>{{ j.customer.name|default:"" }}</small></td><td class="nowrap">läuft bis {{ j.end|date:"d.m. H:i" }}</td><td>{% badge j.status.name j.status.color %}</td></tr>{% endfor %}
+      {% for j in jobs_upcoming %}<tr class="clickable" data-href="{{ j.get_absolute_url }}"><td><a href="{{ j.get_absolute_url }}">{{ j.number }}</a></td><td>{{ j.title }}<br><small>{{ j.customer.name|default:"" }}</small></td><td class="nowrap">{{ j.start|date:"D d.m. H:i" }}</td><td>{% if j.status %}{% badge j.status.name j.status.color %}{% endif %}</td></tr>
+      {% empty %}{% if not jobs_running %}<tr><td class="empty">Keine Jobs in den nächsten 14 Tagen.</td></tr>{% endif %}{% endfor %}
+    </table></div>
+  </div>
+  {% endif %}
+
+  {% if my_assignments %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'user' %} Meine Einsätze (7 Tage)</h2></div>
+    <ul class="timeline">{% for a in my_assignments %}<li><span class="when">{{ a.start|date:"D d.m. H:i" }}–{{ a.end|date:"H:i" }}</span><br><a href="{{ a.job.get_absolute_url }}">{{ a.job }}</a> {% if a.role %}· {{ a.role }}{% endif %} {% badge a.get_status_display a.status_color %}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if material_conflicts or staff_conflicts %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'alert' %} Konflikte</h2><a href="{% url 'planning:conflicts' %}">Details</a></div>
+    <ul class="timeline">
+      {% for c in material_conflicts|slice:":6" %}<li><strong>{{ c.article.name }}</strong>: {{ c.booked|num }} gebucht, {{ c.capacity|num }} verfügbar – es fehlen <strong style="color:var(--danger)">{{ c.missing|num }}</strong><br><small>{% for j in c.jobs %}<a href="{{ j.get_absolute_url }}">{{ j.number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</small></li>{% endfor %}
+      {% for c in staff_conflicts|slice:":6" %}<li><strong>{{ c.employee }}</strong>: {{ c.text }} – <a href="{{ c.a.job.get_absolute_url }}">{{ c.a.job.number }}</a>{% if c.b %} / <a href="{{ c.b.job.get_absolute_url }}">{{ c.b.job.number }}</a>{% endif %}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if assignments_today %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'users' %} Heute im Einsatz</h2><a href="{% url 'staff:planner' %}">Personalplan</a></div>
+    <ul class="timeline">{% for a in assignments_today %}<li><span class="dot" style="--c:{{ a.employee.color }}"></span> <strong>{{ a.employee }}</strong> · {{ a.start|date:"H:i" }}–{{ a.end|date:"H:i" }} · <a href="{{ a.job.get_absolute_url }}">{{ a.job.title }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if overdue %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'euro' %} Überfällige Rechnungen</h2></div>
+    <div class="table-wrap"><table>{% for d in overdue|slice:":8" %}<tr class="clickable" data-href="{{ d.get_absolute_url }}"><td><a href="{{ d.get_absolute_url }}">{{ d.number }}</a></td><td>{{ d.customer.name }}</td><td>fällig {{ d.due_date|date:"d.m.Y" }}</td><td class="num">{{ d.open_amount|money }}</td></tr>{% endfor %}</table></div>
+  </div>
+  {% endif %}
+
+  {% if tasks %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'tasks' %} Aufgaben</h2><a href="{% url 'projects:task_list' %}?done=0">Alle</a></div>
+    <ul class="timeline">{% for t in tasks %}<li>
+      <form method="post" action="{% url 'projects:task_toggle' t.pk %}" style="display:inline">{% csrf_token %}<input type="hidden" name="next" value="/"><button class="btn btn-sm btn-ghost" title="Erledigt">☐</button></form>
+      {{ t.title }} {% if t.due_date %}<small class="{% if t.overdue %}badge{% endif %}" {% if t.overdue %}style="--badge:#dc2626"{% endif %}>bis {{ t.due_date|date:"d.m." }}</small>{% endif %}
+      {% if t.job %}<small>· <a href="{{ t.job.get_absolute_url }}">{{ t.job.number }}</a></small>{% endif %}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if low_stock %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'box' %} Unter Mindestbestand</h2></div>
+    <ul class="timeline">{% for a in low_stock %}<li><a href="{{ a.get_absolute_url }}">{{ a.name }}</a> – {{ a.usable_quantity|num }} / {{ a.min_stock|num }} {{ a.unit }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if activity %}
+  <div class="card">
+    <div class="card-head"><h2>{% icon 'activity' %} Letzte Aktivität</h2><a href="{% url 'core:audit_list' %}">Protokoll</a></div>
+    <ul class="timeline">{% for a in activity %}<li><span class="when">{{ a.timestamp|date:"d.m. H:i" }} · {{ a.user|default:"System" }}</span><br>{{ a.get_action_display }}: {{ a.object_repr }}{% if a.message %} – {{ a.message }}{% endif %}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

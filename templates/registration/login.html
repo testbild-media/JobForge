@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Anmelden{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="card">
+    <div class="logo">
+      {% if company.logo %}<img src="{{ company.logo.url }}" alt="{{ company.name }}">{% else %}<div class="brand" style="justify-content:center;color:inherit"><span class="logo-mark">JF</span><span>JobForge<small>Forge your workflow</small></span></div>{% endif %}
+    </div>
+    <h1 style="text-align:center;font-size:1.25rem">{{ company.name|default:"JobForge" }}</h1>
+    {% if form.errors %}<div class="alert alert-danger">Benutzername oder Passwort ist falsch.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="field" style="margin-bottom:.8rem"><label for="id_username">Benutzername</label>{{ form.username }}</div>
+      <div class="field" style="margin-bottom:1rem"><label for="id_password">Passwort</label>{{ form.password }}</div>
+      <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center" type="submit">Anmelden</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

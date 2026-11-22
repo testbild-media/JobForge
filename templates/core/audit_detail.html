@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>{{ object.get_action_display }}: {{ object.object_repr }}</h1><div class="sub">{{ object.timestamp|date:"d.m.Y H:i:s" }} · {{ object.user|default:"System" }}</div></div>
+<div class="actions"><a class="btn" href="{% url 'core:audit_list' %}">Zurück</a></div></div>
+<div class="card">
+  {% if object.message %}<p>{{ object.message }}</p>{% endif %}
+  {% if object.changes %}
+  <div class="table-wrap"><table><thead><tr><th>Feld</th><th>Vorher</th><th>Nachher</th></tr></thead>
+  <tbody>{% for k, v in object.changes.items %}<tr><td>{{ k }}</td><td>{{ v.0|default:"–" }}</td><td>{{ v.1|default:"–" }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="muted">Keine Feldänderungen protokolliert.</p>{% endif %}
+</div>
+{% endblock %}

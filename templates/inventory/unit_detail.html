@@ -1,0 +1,26 @@
+{% extends "core/crud/detail.html" %}{% load jf %}
+{% block detail_actions %}
+<a class="btn" href="{% url 'inventory:labels' %}?kind=unit&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>
+{% if perms.inventory.add_movement %}<a class="btn" href="{% url 'inventory:transfer' %}?unit={{ object.pk }}">{% icon 'repeat' 16 %} Umlagern</a>{% endif %}
+{% endblock %}
+{% block detail_body %}
+<div class="grid grid-3">
+  <div class="card span-2">
+    <div class="card-head"><h2><a href="{{ object.article.get_absolute_url }}">{{ object.article.name }}</a></h2>{% badge object.get_condition_display object.condition_color %}</div>
+    {% if object.current_job %}<div class="alert alert-info">Ausgegeben an <a href="{{ object.current_job.get_absolute_url }}">{{ object.current_job }}</a>{% if object.current_job.period_end %} – Rückgabe bis {{ object.current_job.period_end|date:"d.m.Y H:i" }}{% endif %}</div>{% endif %}
+    <dl class="kv">{% for label, value in fields %}{% if value != "–" %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endif %}{% endfor %}</dl>
+  </div>
+  <div class="card">
+    <img src="{% url 'inventory:qr' object.code %}" alt="QR {{ object.code }}" style="width:150px;height:150px;display:block;margin:0 auto .5rem;background:#fff;padding:6px;border-radius:8px">
+    <p class="center mono">{{ object.code }}</p>
+    {% if perms.inventory.change_unit %}
+    <form method="post" action="{% url 'inventory:unit_condition' object.pk %}">{% csrf_token %}
+      <div class="field"><label>Zustand ändern</label>{{ condition_form.condition }}</div>
+      <div class="field" style="margin-top:.5rem">{{ condition_form.note }}</div>
+      <div class="form-actions" style="margin-top:.6rem"><button class="btn btn-primary btn-sm">Zustand speichern</button></div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<div class="card"><h3>{% icon 'repeat' %} Bewegungen &amp; Einsätze</h3>{% include "inventory/movement_table.html" %}</div>
+{% endblock %}

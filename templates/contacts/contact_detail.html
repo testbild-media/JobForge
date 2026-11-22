@@ -1,0 +1,52 @@
+{% extends "core/crud/detail.html" %}{% load jf %}
+{% block detail_actions %}
+{% if perms.projects.add_job %}<a class="btn" href="{% url 'projects:job_create' %}?customer={{ object.pk }}">{% icon 'plus' 16 %} Job</a>{% endif %}
+{% if perms.billing.add_document %}<a class="btn" href="{% url 'billing:document_create' %}?customer={{ object.pk }}&doc_type=quote">{% icon 'file' 16 %} Angebot</a>{% endif %}
+{% endblock %}
+{% block detail_body %}
+<div class="grid grid-3">
+  <div class="card span-2">
+    <div class="card-head"><h2>{{ object.name }}</h2>{% badge object.get_contact_type_display '#0ea5e9' %}</div>
+    <dl class="kv">
+      <dt>Nummer</dt><dd>{{ object.number }}</dd>
+      <dt>Adresse</dt><dd>{{ object.address_text }}</dd>
+      {% if object.email %}<dt>E-Mail</dt><dd><a href="mailto:{{ object.email }}">{{ object.email }}</a></dd>{% endif %}
+      {% if object.phone %}<dt>Telefon</dt><dd><a href="tel:{{ object.phone }}">{{ object.phone }}</a></dd>{% endif %}
+      {% if object.mobile %}<dt>Mobil</dt><dd><a href="tel:{{ object.mobile }}">{{ object.mobile }}</a></dd>{% endif %}
+      {% if object.website %}<dt>Website</dt><dd>{{ object.website }}</dd>{% endif %}
+      {% if object.vat_id %}<dt>USt-IdNr.</dt><dd>{{ object.vat_id }}</dd>{% endif %}
+      {% if object.leitweg_id %}<dt>Leitweg-ID</dt><dd>{{ object.leitweg_id }}</dd>{% endif %}
+      <dt>Zahlungsbedingung</dt><dd>{{ object.payment_term|default:"Standard" }}</dd>
+      {% if object.discount_percent %}<dt>Kundenrabatt</dt><dd>{{ object.discount_percent|num }} %</dd>{% endif %}
+      {% for label, value in object.custom_field_values %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}
+      {% if object.notes %}<dt>Bemerkungen</dt><dd>{{ object.notes }}</dd>{% endif %}
+    </dl>
+  </div>
+  <div class="card">
+    <h3>{% icon 'users' %} Ansprechpartner</h3>
+    <ul class="timeline">{% for p in persons %}<li><strong>{{ p.first_name }} {{ p.last_name }}</strong>{% if p.is_primary %} {% badge 'Haupt' '#16a34a' %}{% endif %}{% if p.position %}<br><small>{{ p.position }}</small>{% endif %}
+      {% if p.email %}<br><a href="mailto:{{ p.email }}">{{ p.email }}</a>{% endif %}{% if p.phone or p.mobile %}<br><small>{{ p.phone }} {{ p.mobile }}</small>{% endif %}</li>
+      {% empty %}<li class="muted">Keine Ansprechpartner.</li>{% endfor %}</ul>
+    {% if addresses %}<h3 style="margin-top:1rem">{% icon 'pin' %} Adressen</h3>
+    <ul class="timeline">{% for a in addresses %}<li><small>{{ a.get_kind_display }}</small><br>{{ a }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'truck' %} Jobs &amp; Projekte</h3></div>
+    <div class="table-wrap"><table>
+      {% for p in projects %}<tr class="clickable" data-href="{{ p.get_absolute_url }}"><td>{% icon 'folder' 15 %} <a href="{{ p.get_absolute_url }}">{{ p.number }}</a></td><td>{{ p.name }}</td><td></td><td>{% if p.status %}{% badge p.status.name p.status.color %}{% endif %}</td></tr>{% endfor %}
+      {% for j in jobs %}<tr class="clickable" data-href="{{ j.get_absolute_url }}"><td><a href="{{ j.get_absolute_url }}">{{ j.number }}</a></td><td>{{ j.title }}</td><td class="nowrap">{{ j.start|date:"d.m.Y" }}</td><td>{% if j.status %}{% badge j.status.name j.status.color %}{% endif %}</td></tr>
+      {% empty %}{% if not projects %}<tr><td class="empty">Noch keine Aufträge.</td></tr>{% endif %}{% endfor %}
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'euro' %} Dokumente</h3>{% if open_amount %}<span>Offen: <strong>{{ open_amount|money }}</strong></span>{% endif %}</div>
+    <div class="table-wrap"><table>
+      {% for d in documents %}<tr class="clickable" data-href="{{ d.get_absolute_url }}"><td><a href="{{ d.get_absolute_url }}">{{ d.number|default:"Entwurf" }}</a></td><td>{{ d.get_doc_type_display }}</td><td>{{ d.date|date:"d.m.Y" }}</td><td class="num">{{ d.gross_total|money }}</td><td>{% badge d.display_status.1 d.status_color %}</td></tr>
+      {% empty %}<tr><td class="empty">Keine Dokumente.</td></tr>{% endfor %}
+    </table></div>
+  </div>
+</div>
+{% endblock %}

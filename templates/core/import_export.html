@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><h1>Import &amp; Export</h1></div>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>{% icon 'download' %} Export (CSV)</h2>
+    <p class="muted">Semikolon-getrennt, UTF-8 – öffnet direkt in Excel/LibreOffice. Die Dateien dienen auch als Importvorlage.</p>
+    <ul class="timeline">{% for key, e in exports.items %}{% if request.user|has_perm:e.perm %}<li><a href="{% url 'core:export' key %}">{% icon 'download' 15 %} {{ e.label }}</a></li>{% endif %}{% endfor %}</ul>
+  </div>
+  <div class="card">
+    <h2>{% icon 'upload' %} Import (CSV)</h2>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      {% include "includes/form_fields.html" %}
+      <div class="form-actions"><button class="btn btn-primary">{% icon 'upload' 16 %} Importieren</button></div>
+    </form>
+    <p class="muted" style="margin-top:1rem">Pflichtspalten: Kontakte – <code>company_name</code> oder <code>last_name</code>; Artikel – <code>name</code>;
+      Geräte – <code>article</code> (Artikelnummer); Bestände – <code>article</code>, <code>location</code> (Lagerplatz-Code), <code>quantity</code>.</p>
+    {% if report %}
+      <div class="alert {% if report.errors %}alert-warning{% else %}alert-success{% endif %}">
+        {{ report.created }} neu angelegt, {{ report.updated }} aktualisiert, {{ report.errors|length }} Fehler.
+        {% if report.errors %}<ul>{% for e in report.errors|slice:":50" %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

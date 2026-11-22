@@ -1,0 +1,49 @@
+{% extends "core/crud/detail.html" %}{% load jf %}
+{% block detail_actions %}
+{% if perms.inventory.add_movement and object.is_stocked %}<a class="btn" href="{% url 'inventory:receive' %}?article={{ object.pk }}">{% icon 'download' 16 %} Wareneingang</a>{% endif %}
+{% if object.is_serial %}<a class="btn" href="{% url 'inventory:labels' %}?kind=unit&article={{ object.pk }}">{% icon 'qr' 16 %} Etiketten</a>{% else %}<a class="btn" href="{% url 'inventory:labels' %}?kind=article&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>{% endif %}
+{% endblock %}
+{% block detail_body %}
+<div class="grid grid-4">
+  <div class="card stat"><span class="label">Einsatzbereit</span><span class="value">{{ object.usable_quantity|num }} {{ object.unit }}</span>{% if object.is_stocked %}<small>Gesamt {{ object.total_quantity|num }}</small>{% endif %}</div>
+  <div class="card stat"><span class="label">Jetzt verfügbar</span><span class="value">{{ avail_now.available|num }}</span><small>{{ avail_now.booked|num }} aktuell gebucht</small></div>
+  <div class="card stat {% if avail_30.available < 0 %}warn{% endif %}"><span class="label">Min. frei (30 Tage)</span><span class="value">{{ avail_30.available|num }}</span><small>Spitze {{ avail_30.booked|num }} gebucht</small></div>
+  <div class="card stat"><span class="label">Preise</span><span class="value" style="font-size:1.1rem">{% if object.rental_price %}{{ object.rental_price|money }}/Tag{% endif %}{% if object.sale_price %}<br>{{ object.sale_price|money }} VK{% endif %}{% if not object.rental_price and not object.sale_price %}–{% endif %}</span><small>EK {{ object.purchase_price|money }}</small></div>
+</div>
+<div class="grid grid-3">
+  <div class="card span-2">
+    <div class="card-head"><h2>{{ object.name }}</h2>{% badge object.get_kind_display '#6366f1' %}</div>
+    {% if object.image %}<img src="{{ object.image.url }}" alt="" style="max-width:220px;border-radius:8px;float:right;margin-left:1rem">{% endif %}
+    <dl class="kv">{% for label, value in fields %}{% if value != "–" %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endif %}{% endfor %}</dl>
+  </div>
+  <div class="card">
+    {% if components %}<h3>{% icon 'layers' %} Set-Inhalt</h3>
+    <ul class="timeline">{% for c in components %}<li>{{ c.quantity|num }} × <a href="{{ c.component.get_absolute_url }}">{{ c.component.name }}</a> <small>({{ c.component.usable_quantity|num }} da)</small></li>{% endfor %}</ul>{% endif %}
+    {% if used_in %}<h3>Enthalten in Sets</h3><ul class="timeline">{% for c in used_in %}<li><a href="{{ c.set_article.get_absolute_url }}">{{ c.set_article.name }}</a> ({{ c.quantity|num }}×)</li>{% endfor %}</ul>{% endif %}
+    <h3>{% icon 'calendar' %} Kommende Buchungen</h3>
+    <ul class="timeline">{% for s, e, q, job in upcoming %}<li><a href="{{ job.get_absolute_url }}">{{ job.number }} {{ job.title }}</a><br><small>{{ s|date:"d.m. H:i" }} – {{ e|date:"d.m. H:i" }} · {{ q|num }} {{ object.unit }}</small></li>{% empty %}<li class="muted">Keine Buchungen in 60 Tagen.</li>{% endfor %}</ul>
+  </div>
+</div>
+{% if object.kind == 'bulk' or object.kind == 'consumable' %}
+<div class="card">
+  <div class="card-head"><h3>{% icon 'pin' %} Bestand je Lagerort</h3>
+    <div class="actions">{% if perms.inventory.add_movement %}<a class="btn btn-sm" href="{% url 'inventory:transfer' %}?article={{ object.pk }}">Umlagern</a><a class="btn btn-sm" href="{% url 'inventory:bulk_condition' %}?article={{ object.pk }}">Defekt/Verlust</a>{% endif %}
+    {% if perms.inventory.change_stock %}<a class="btn btn-sm" href="{% url 'inventory:adjust' %}?article={{ object.pk }}">Inventur</a>{% endif %}</div></div>
+  <div class="table-wrap"><table><thead><tr><th>Lagerort</th><th class="num">Menge</th><th class="num">Defekt</th><th class="num">Einsatzbereit</th></tr></thead>
+  <tbody>{% for s in stock %}<tr><td><a href="{{ s.location.get_absolute_url }}">{{ s.location }}</a></td><td class="num">{{ s.quantity|num }}</td><td class="num">{{ s.defective|num }}</td><td class="num">{{ s.usable|num }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="empty">Kein Bestand gebucht.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endif %}
+{% if object.is_serial %}
+<div class="card">
+  <div class="card-head"><h3>{% icon 'qr' %} Einzelgeräte ({{ units|length }})</h3>{% if perms.inventory.add_unit %}<a class="btn btn-sm" href="{% url 'inventory:unit_create' %}?article={{ object.pk }}">{% icon 'plus' 14 %} Gerät</a>{% endif %}</div>
+  <div class="table-wrap"><table><thead><tr><th>Code</th><th>Seriennr.</th><th>Lagerort</th><th>Zustand</th><th>Ausgegeben an</th></tr></thead>
+  <tbody>{% for u in units %}<tr class="clickable" data-href="{{ u.get_absolute_url }}"><td><a href="{{ u.get_absolute_url }}" class="mono">{{ u.code }}</a></td><td>{{ u.serial_number|default:"–" }}</td><td>{{ u.location|default:"–" }}</td><td>{% badge u.get_condition_display u.condition_color %}</td><td>{% if u.current_job %}<a href="{{ u.current_job.get_absolute_url }}">{{ u.current_job.number }}</a>{% else %}–{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">Noch keine Geräte – über „Wareneingang“ anlegen.</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endif %}
+<div class="card">
+  <div class="card-head"><h3>{% icon 'repeat' %} Bewegungshistorie</h3><a href="{% url 'inventory:movement_list' %}?q={{ object.number }}">Alle</a></div>
+  {% include "inventory/movement_table.html" %}
+</div>
+{% endblock %}

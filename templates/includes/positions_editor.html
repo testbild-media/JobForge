@@ -1,0 +1,43 @@
+{% load jf %}
+<form method="post" data-positions data-default-factor="{{ default_factor|stringformat:'s' }}" data-default-tax="{{ default_tax|stringformat:'s' }}" data-lookup="{% url 'inventory:article_lookup' %}">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  {% if formset.non_form_errors %}<div class="alert alert-danger">{{ formset.non_form_errors }}</div>{% endif %}
+  <div class="card">
+    <div class="card-head">
+      <h2>Positionen</h2>
+      <div class="actions">
+        <button type="button" class="btn btn-sm" data-add-pos="heading">{% icon 'layers' 15 %} Gruppe</button>
+        <button type="button" class="btn btn-sm" data-add-pos="rental">{% icon 'plus' 15 %} Miete</button>
+        <button type="button" class="btn btn-sm" data-add-pos="sale">{% icon 'plus' 15 %} Verkauf</button>
+        <button type="button" class="btn btn-sm" data-add-pos="service">{% icon 'plus' 15 %} Leistung</button>
+        <button type="button" class="btn btn-sm" data-add-pos="staff">{% icon 'plus' 15 %} Personal</button>
+        <button type="button" class="btn btn-sm" data-add-pos="text">{% icon 'plus' 15 %} Text</button>
+        {% if document_mode %}<button type="button" class="btn btn-sm" data-add-pos="subtotal">Zwischensumme</button>{% endif %}
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="pos-table">
+        <thead><tr><th></th><th>Art</th><th>Artikel</th><th>Beschreibung</th><th class="num">Menge</th><th>Einh.</th><th class="num">Preis</th><th class="num">Tage/Fakt.</th><th class="num">Rab.%</th><th class="num">USt%</th><th class="num">Gesamt</th><th></th></tr></thead>
+        <tbody data-pos-body>
+        {% for f in formset %}
+          {% include "includes/position_row.html" with f=f %}
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <template data-pos-template>{% include "includes/position_row.html" with f=formset.empty_form %}</template>
+    {% if not formset.forms %}<p class="muted" data-pos-empty>Noch keine Positionen – oben eine Position hinzufügen.</p>{% endif %}
+    <div class="sum-box"><table>
+      <tr><td>Netto</td><td class="num" data-sum-net>–</td></tr>
+      <tr><td>USt.</td><td class="num" data-sum-tax>–</td></tr>
+      <tr class="grand"><td>Brutto</td><td class="num" data-sum-gross>–</td></tr>
+    </table></div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary btn-lg">{% icon 'check' 16 %} Speichern &amp; schließen</button>
+    <button type="submit" name="continue" value="1" class="btn btn-lg">Speichern</button>
+    <a class="btn btn-lg" href="{{ back_url }}">Abbrechen</a>
+  </div>
+</form>
+<datalist id="unit-list"><option value="Stk"><option value="Tag"><option value="Std"><option value="pauschal"><option value="m"><option value="km"><option value="Set"><option value="kg"><option value="l"></datalist>

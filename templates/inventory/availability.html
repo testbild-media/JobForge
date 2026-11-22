@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>Verfügbarkeitsprüfung</h1><div class="sub">Berücksichtigt Vorbereitungs- und Rückgabezeiten sowie defektes Material.</div></div></div>
+<div class="card">
+  <form method="get" class="inline-form">
+    {% for field in form %}<div class="field{% if field.field.widget.input_type == 'checkbox' %} check{% endif %}">{% if field.field.widget.input_type == 'checkbox' %}{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}</div>{% endfor %}
+    <button class="btn btn-primary">{% icon 'search' 16 %} Prüfen</button>
+  </form>
+  {% if form.errors %}<div class="alert alert-danger" style="margin-top:1rem">{{ form.errors }}</div>{% endif %}
+</div>
+{% if rows %}
+<div class="card">
+  <div class="table-wrap"><table>
+    <thead><tr><th>Artikel</th><th>Art</th><th class="num">Einsatzbereit</th><th class="num">Gebucht (Spitze)</th><th class="num">Verfügbar</th><th>Jobs im Zeitraum</th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr class="{% if r.available < 0 %}row-danger{% elif r.available == 0 %}row-muted{% endif %}">
+        <td><a href="{{ r.article.get_absolute_url }}">{{ r.article.name }}</a><br><small>{{ r.article.number }}</small></td>
+        <td>{{ r.article.get_kind_display }}</td>
+        <td class="num">{{ r.capacity|num }}</td>
+        <td class="num">{{ r.booked|num }}</td>
+        <td class="num"><strong>{{ r.available|num }}</strong> {{ r.article.unit }}</td>
+        <td>{% for j in r.jobs %}<a href="{{ j.get_absolute_url }}">{{ j.number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      </tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% elif form.is_bound %}<div class="card empty">Keine passenden Artikel.</div>{% endif %}
+{% endblock %}

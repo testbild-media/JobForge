@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>Konflikte &amp; Doppelbuchungen</h1><div class="sub">{{ start|date:"d.m.Y" }} – {{ end|date:"d.m.Y" }}</div></div>
+  <form method="get" class="inline-form">
+    <div class="field"><label>Von</label><input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></div>
+    <div class="field"><label>Bis</label><input type="date" name="end" value="{{ end|date:'Y-m-d' }}"></div>
+    <button class="btn">Prüfen</button>
+  </form></div>
+<div class="card">
+  <h2>{% icon 'box' %} Materialkonflikte ({{ material|length }})</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Artikel</th><th class="num">Einsatzbereit</th><th class="num">Gebucht (Spitze)</th><th class="num">Fehlmenge</th><th>Beteiligte Jobs</th></tr></thead>
+    <tbody>{% for c in material %}<tr class="row-danger"><td><a href="{{ c.article.get_absolute_url }}">{{ c.article.name }}</a></td><td class="num">{{ c.capacity|num }}</td><td class="num">{{ c.booked|num }}</td><td class="num"><strong>{{ c.missing|num }}</strong></td>
+      <td>{% for j in c.jobs %}<a href="{{ j.get_absolute_url }}#tab-material">{{ j.number }}</a> <small>({{ j.ps|date:"d.m." }}–{{ j.pe|date:"d.m." }})</small>{% if not forloop.last %}<br>{% endif %}{% endfor %}</td></tr>
+    {% empty %}<tr><td colspan="5" class="empty">Keine Materialkonflikte im Zeitraum. ✓</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+<div class="card">
+  <h2>{% icon 'users' %} Personalkonflikte ({{ staff|length }})</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Person</th><th>Konflikt</th><th>Einsatz</th><th>Kollidiert mit</th></tr></thead>
+    <tbody>{% for c in staff %}<tr class="row-danger"><td><a href="{{ c.employee.get_absolute_url }}">{{ c.employee }}</a></td><td>{{ c.text }}</td>
+      <td><a href="{{ c.a.job.get_absolute_url }}#tab-personal">{{ c.a.job.number }}</a> {{ c.a.start|date:"d.m. H:i" }}–{{ c.a.end|date:"H:i" }}</td>
+      <td>{% if c.b %}<a href="{{ c.b.job.get_absolute_url }}#tab-personal">{{ c.b.job.number }}</a> {{ c.b.start|date:"d.m. H:i" }}–{{ c.b.end|date:"H:i" }}{% else %}{{ c.absence }}{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="empty">Keine Personalkonflikte im Zeitraum. ✓</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

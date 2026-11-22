@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><div><h1>Positionen</h1><div class="sub"><a href="{{ doc.get_absolute_url }}">{{ doc }}</a> · {{ doc.customer.name }}</div></div></div>
+{% include "includes/positions_editor.html" %}
+{% endblock %}

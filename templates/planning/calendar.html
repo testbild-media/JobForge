@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ month_name }} {{ year }}</h1></div>
+  <div class="actions">
+    <a class="btn" href="?y={{ prev.year }}&m={{ prev.month }}{% for l in active_layers %}&l={{ l }}{% endfor %}">‹</a>
+    <a class="btn" href="?{% for l in active_layers %}l={{ l }}&{% endfor %}">Heute</a>
+    <a class="btn" href="?y={{ next.year }}&m={{ next.month }}{% for l in active_layers %}&l={{ l }}{% endfor %}">›</a>
+    <a class="btn" href="{% url 'planning:ics' %}" title="iCal-Export">{% icon 'download' 16 %} .ics</a>
+  </div>
+</div>
+<form class="toolbar" method="get">
+  <input type="hidden" name="y" value="{{ year }}"><input type="hidden" name="m" value="{{ month }}">
+  {% for key, label in layers %}<label class="btn btn-sm"><input type="checkbox" name="l" value="{{ key }}" {% if key in active_layers %}checked{% endif %} onchange="this.form.submit()"> {{ label }}</label>{% endfor %}
+</form>
+<div class="cal hide-mobile">
+  {% for d in weekdays %}<div class="dow">{{ d }}</div>{% endfor %}
+  {% for week in grid %}{% for day in week %}
+    <div class="day{% if not day.in_month %} out{% endif %}{% if day.today %} today{% endif %}">
+      <span class="num">{{ day.date.day }}</span>
+      {% for e in day.events|slice:":6" %}<a class="ev" style="--c:{{ e.color }}" href="{{ e.url }}" title="{{ e.title }}{% if e.sub %} – {{ e.sub }}{% endif %}">{% if not e.all_day and e.start.date == day.date %}{{ e.start|date:"H:i" }} {% endif %}{{ e.title }}</a>{% endfor %}
+      {% if day.events|length > 6 %}<small class="muted">+{{ day.events|length|add:"-6" }} weitere</small>{% endif %}
+    </div>
+  {% endfor %}{% endfor %}
+</div>
+<div class="card" style="margin-top:1rem">
+  <h3>Anstehend</h3>
+  <ul class="timeline">{% for e in upcoming %}<li><span class="dot" style="--c:{{ e.color }}"></span> <span class="when">{{ e.start|date:"D d.m. H:i" }}{% if e.end.date != e.start.date %} – {{ e.end|date:"d.m." }}{% endif %}</span><br><a href="{{ e.url }}">{{ e.title }}</a>{% if e.sub %} <small>· {{ e.sub }}</small>{% endif %}</li>{% empty %}<li class="muted">Keine anstehenden Einträge in diesem Monat.</li>{% endfor %}</ul>
+</div>
+{% endblock %}

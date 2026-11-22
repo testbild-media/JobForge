@@ -1,0 +1,20 @@
+{% extends "core/crud/detail.html" %}{% load jf %}
+{% block detail_actions %}
+{% if perms.inventory.add_location %}<a class="btn" href="{% url 'inventory:location_create' %}?parent={{ object.pk }}">{% icon 'plus' 16 %} Unterort</a>{% endif %}
+<a class="btn" href="{% url 'inventory:labels' %}?kind=location&id={{ object.pk }}">{% icon 'qr' 16 %} Etikett</a>
+{% endblock %}
+{% block detail_body %}
+<div class="grid grid-3">
+  <div class="card span-2"><dl class="kv">{% for label, value in fields %}{% if value != "–" %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endif %}{% endfor %}</dl></div>
+  <div class="card"><h3>{% icon 'pin' %} Unterorte</h3>
+    <ul class="timeline">{% for c in children %}<li><a href="{{ c.get_absolute_url }}">{{ c.name }}</a> <small>{{ c.get_kind_display }} · {{ c.code }}</small></li>{% empty %}<li class="muted">Keine Unterorte.</li>{% endfor %}</ul></div>
+</div>
+<div class="grid grid-2">
+  <div class="card"><h3>{% icon 'layers' %} Mengenartikel (inkl. Unterorte)</h3>
+    <div class="table-wrap"><table><thead><tr><th>Artikel</th><th>Lagerplatz</th><th class="num">Menge</th><th class="num">Defekt</th></tr></thead>
+    <tbody>{% for s in stock %}<tr><td><a href="{{ s.article.get_absolute_url }}">{{ s.article.name }}</a></td><td><small>{{ s.location.name }}</small></td><td class="num">{{ s.quantity|num }} {{ s.article.unit }}</td><td class="num">{{ s.defective|num }}</td></tr>{% empty %}<tr><td colspan="4" class="empty">Kein Bestand.</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><h3>{% icon 'qr' %} Einzelgeräte (inkl. Unterorte)</h3>
+    <div class="table-wrap"><table><thead><tr><th>Code</th><th>Artikel</th><th>Zustand</th><th>Job</th></tr></thead>
+    <tbody>{% for u in units %}<tr><td><a class="mono" href="{{ u.get_absolute_url }}">{{ u.code }}</a></td><td>{{ u.article.name }}</td><td>{% badge u.get_condition_display u.condition_color %}</td><td>{% if u.current_job %}<a href="{{ u.current_job.get_absolute_url }}">{{ u.current_job.number }}</a>{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="empty">Keine Geräte.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

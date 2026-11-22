@@ -1,0 +1,41 @@
+{% load jf %}<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'edit' %} Notizen</h3></div>
+    {% if perms.core.add_note %}
+    <form method="post" action="{{ note_url }}">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ return_url }}">
+      <textarea name="text" rows="2" placeholder="Notiz hinzufügen …" required></textarea>
+      <div class="form-actions" style="margin-top:.5rem"><button class="btn btn-sm btn-primary">Speichern</button></div>
+    </form>
+    {% endif %}
+    <ul class="timeline">
+      {% for n in notes %}
+      <li><span class="when">{{ n.created|date:"d.m.Y H:i" }} · {{ n.author|default:"–" }}</span>
+        {% if n.author_id == request.user.pk or perms.core.delete_note %}
+        <form method="post" action="{% url 'core:note_delete' n.pk %}" style="display:inline" data-confirm="Notiz löschen?">{% csrf_token %}<input type="hidden" name="next" value="{{ return_url }}"><button class="btn btn-ghost btn-sm" title="Löschen">{% icon 'x' 14 %}</button></form>
+        {% endif %}
+        <div style="white-space:pre-line">{{ n.text }}</div></li>
+      {% empty %}<li class="muted">Keine Notizen.</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% icon 'folder' %} Dokumente &amp; Dateien</h3></div>
+    {% if perms.core.add_attachment %}
+    <form method="post" action="{{ attachment_url }}" enctype="multipart/form-data" class="inline-form">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ return_url }}">
+      <div class="field" style="flex:2"><input type="file" name="file" multiple required></div>
+      <div class="field"><input type="text" name="name" placeholder="Bezeichnung (optional)"></div>
+      <button class="btn btn-sm btn-primary">{% icon 'upload' 16 %} Hochladen</button>
+    </form>
+    {% endif %}
+    <ul class="timeline">
+      {% for a in attachments %}
+      <li><a href="{{ a.file.url }}" target="_blank" rel="noopener">{% icon 'file' 16 %} {{ a }}</a>
+        <span class="when"> · {{ a.uploaded|date:"d.m.Y" }} · {{ a.uploaded_by|default:"" }}</span>
+        {% if a.uploaded_by_id == request.user.pk or perms.core.delete_attachment %}
+        <form method="post" action="{% url 'core:attachment_delete' a.pk %}" style="display:inline" data-confirm="Datei löschen?">{% csrf_token %}<input type="hidden" name="next" value="{{ return_url }}"><button class="btn btn-ghost btn-sm" title="Löschen">{% icon 'x' 14 %}</button></form>
+        {% endif %}</li>
+      {% empty %}<li class="muted">Keine Dateien.</li>{% endfor %}
+    </ul>
+  </div>
+</div>

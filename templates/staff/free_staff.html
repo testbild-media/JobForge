@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head"><h1>Personal-Verfügbarkeit</h1></div>
+<div class="card"><form method="get" class="inline-form">
+  <input type="hidden" name="job" value="{{ job }}">
+  <div class="field"><label>Von</label><input type="datetime-local" name="start" value="{{ start }}" required></div>
+  <div class="field"><label>Bis</label><input type="datetime-local" name="end" value="{{ end }}" required></div>
+  <div class="field"><label>Qualifikation</label><select name="qualification"><option value="">– alle –</option>{% for q in qualifications %}<option value="{{ q.pk }}" {% if q == qualification %}selected{% endif %}>{{ q.name }}</option>{% endfor %}</select></div>
+  <button class="btn btn-primary">{% icon 'search' 16 %} Prüfen</button>
+</form></div>
+{% if result %}
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Person</th><th>Qualifikationen</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for emp, reasons in result %}<tr class="{% if reasons %}row-muted{% else %}row-ok{% endif %}">
+    <td><a href="{{ emp.get_absolute_url }}">{{ emp }}</a>{% if emp.is_freelancer %} <small>(Freelancer)</small>{% endif %}</td>
+    <td>{% for q in emp.qualifications.all %}{{ q.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+    <td>{% if reasons %}{% for r in reasons %}<div><small>{{ r }}</small></div>{% endfor %}{% else %}<strong style="color:var(--success)">frei</strong>{% endif %}</td>
+    <td>{% if not reasons and perms.staff.add_assignment and job %}<a class="btn btn-sm" href="{% url 'staff:assignment_create' %}?job={{ job }}&employee={{ emp.pk }}&start={{ start }}&end={{ end }}">Einplanen</a>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endif %}
+{% endblock %}

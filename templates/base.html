@@ -1,0 +1,99 @@
+{% load static jf %}<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}{{ title|default:"JobForge" }}{% endblock %} · JobForge</title>
+  <meta name="theme-color" content="{{ company.primary_color|default:'#e8590c' }}">
+  <link rel="manifest" href="{% url 'manifest' %}">
+  <link rel="icon" href="{% static 'icons/favicon.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v={{ ASSET_VERSION }}">
+  <style>:root { --primary: {{ company.primary_color|default:"#e8590c" }}; --sidebar: {{ company.secondary_color|default:"#1f2937" }}; }</style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% block body %}
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{% url 'core:dashboard' %}">
+      {% if company.logo %}<img src="{{ company.logo.url }}" alt="">{% else %}<span class="logo-mark">JF</span>{% endif %}
+      <span>{{ company.name|default:"JobForge" }}<small>JobForge</small></span>
+    </a>
+    <nav class="nav">
+      <a href="{% url 'core:dashboard' %}" class="{% active request '/' True %}">{% icon 'dashboard' %} Übersicht</a>
+      <a href="{% url 'planning:calendar' %}" class="{% active request '/planung/kalender' %}">{% icon 'calendar' %} Kalender</a>
+      <a href="{% url 'inventory:scan' %}" class="{% active request '/lager/scanner' %}">{% icon 'scan' %} Scanner</a>
+      {% if request.user.employee %}<a href="{% url 'staff:my_assignments' %}" class="{% active request '/personal/meine' %}">{% icon 'user' %} Meine Einsätze</a>{% endif %}
+
+      {% if perms.projects.view_job or perms.contacts.view_contact %}<div class="nav-section">Aufträge</div>{% endif %}
+      {% if perms.contacts.view_contact %}<a href="{% url 'contacts:contact_list' %}" class="{% active request '/kontakte' %}">{% icon 'users' %} Kontakte</a>{% endif %}
+      {% if perms.projects.view_project %}<a href="{% url 'projects:project_list' %}" class="{% if request.path == '/projekte/' or '/projekte/neu' in request.path %}active{% endif %}">{% icon 'folder' %} Projekte</a>{% endif %}
+      {% if perms.projects.view_job %}<a href="{% url 'projects:job_list' %}" class="{% active request '/projekte/jobs' %}">{% icon 'truck' %} Jobs / Aufträge</a>{% endif %}
+      {% if perms.projects.view_task %}<a href="{% url 'projects:task_list' %}" class="{% active request '/projekte/aufgaben' %}">{% icon 'tasks' %} Aufgaben</a>{% endif %}
+      {% if perms.projects.view_appointment %}<a href="{% url 'projects:appointment_list' %}" class="{% active request '/projekte/termine' %}">{% icon 'clock' %} Termine</a>{% endif %}
+
+      {% if perms.billing.view_document %}
+      <div class="nav-section">Finanzen</div>
+      <a href="{% url 'billing:document_list' %}?art=angebote" class="{% if request.GET.art == 'angebote' %}active{% endif %}">{% icon 'file' %} Angebote</a>
+      <a href="{% url 'billing:document_list' %}?art=auftragsbestaetigungen" class="{% if request.GET.art == 'auftragsbestaetigungen' %}active{% endif %}">{% icon 'check' %} Auftragsbestätigungen</a>
+      <a href="{% url 'billing:document_list' %}?art=rechnungen" class="{% if request.GET.art == 'rechnungen' %}active{% endif %}">{% icon 'euro' %} Rechnungen</a>
+      <a href="{% url 'billing:open_items' %}" class="{% active request '/finanzen/offene' %}">{% icon 'alert' %} Offene Posten</a>
+      {% if perms.billing.view_payment %}<a href="{% url 'billing:payment_list' %}" class="{% active request '/finanzen/zahlungen' %}">{% icon 'download' %} Zahlungseingänge</a>{% endif %}
+      {% endif %}
+
+      {% if perms.inventory.view_article %}
+      <div class="nav-section">Lager</div>
+      <a href="{% url 'inventory:article_list' %}" class="{% active request '/lager/artikel' %}">{% icon 'box' %} Artikel</a>
+      <a href="{% url 'inventory:unit_list' %}" class="{% active request '/lager/geraete' %}">{% icon 'qr' %} Einzelgeräte</a>
+      <a href="{% url 'inventory:stock_list' %}" class="{% active request '/lager/bestaende' %}">{% icon 'layers' %} Bestände</a>
+      <a href="{% url 'inventory:movement_list' %}" class="{% active request '/lager/bewegungen' %}">{% icon 'repeat' %} Bewegungen</a>
+      <a href="{% url 'inventory:location_list' %}" class="{% active request '/lager/lagerorte' %}">{% icon 'pin' %} Lagerorte</a>
+      <a href="{% url 'inventory:availability' %}" class="{% active request '/lager/verfuegbarkeit' %}">{% icon 'activity' %} Verfügbarkeit</a>
+      <a href="{% url 'planning:conflicts' %}" class="{% active request '/planung/konflikte' %}">{% icon 'alert' %} Konflikte</a>
+      <a href="{% url 'inventory:defects' %}" class="{% active request '/lager/defekte' %}">{% icon 'tool' %} Defekte</a>
+      {% endif %}
+
+      {% if perms.staff.view_employee or perms.staff.view_timeentry %}<div class="nav-section">Personal</div>{% endif %}
+      {% if perms.staff.view_employee %}<a href="{% url 'staff:employee_list' %}" class="{% if request.path == '/personal/' or '/personal/neu' in request.path %}active{% endif %}">{% icon 'users' %} Personal</a>{% endif %}
+      {% if perms.staff.view_assignment %}<a href="{% url 'staff:planner' %}" class="{% active request '/personal/planung' %}">{% icon 'calendar' %} Personalplanung</a>{% endif %}
+      {% if perms.staff.view_assignment %}<a href="{% url 'staff:assignment_list' %}" class="{% active request '/personal/einsaetze' %}">{% icon 'truck' %} Einsätze</a>{% endif %}
+      {% if perms.staff.view_availability %}<a href="{% url 'staff:availability_list' %}" class="{% active request '/personal/abwesenheiten' %}">{% icon 'clock' %} Abwesenheiten</a>{% endif %}
+      {% if perms.staff.view_timeentry %}<a href="{% url 'staff:timeentry_list' %}" class="{% active request '/personal/zeiten' %}">{% icon 'clock' %} Zeiterfassung</a>{% endif %}
+
+      <div class="nav-section">System</div>
+      <a href="{% url 'core:settings' %}" class="{% active request '/einstellungen' %}">{% icon 'settings' %} Einstellungen</a>
+    </nav>
+    <div class="sidebar-footer">JobForge {{ JOBFORGE_VERSION }} · AGPLv3</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-ghost menu-toggle" type="button" data-toggle-nav aria-label="Menü">{% icon 'menu' 20 %}</button>
+      <form class="search" action="{% url 'core:search' %}" method="get" role="search">
+        {% icon 'search' 16 %}
+        <input type="search" name="q" placeholder="Suchen oder Code scannen …" value="{{ request.GET.q|default:'' }}" autocomplete="off">
+      </form>
+      <div class="spacer"></div>
+      <a class="btn btn-ghost hide-mobile" href="{% url 'inventory:scan' %}" title="Scanner">{% icon 'scan' %}</a>
+      <details class="dropdown">
+        <summary class="btn btn-ghost">{% icon 'user' %} <span class="hide-mobile">{{ request.user.get_full_name|default:request.user.username }}</span></summary>
+        <div class="dropdown-menu">
+          <a href="{% url 'password_change' %}">{% icon 'edit' 16 %} Passwort ändern</a>
+          <a href="{% url 'core:api_access' %}">{% icon 'link' 16 %} API-Zugang</a>
+          {% if request.user.is_staff %}<a href="{% url 'admin:index' %}">{% icon 'settings' 16 %} Admin-Oberfläche</a>{% endif %}
+          <div class="sep"></div>
+          <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">{% icon 'logout' 16 %} Abmelden</button></form>
+        </div>
+      </details>
+    </header>
+    <main class="content">
+      {% if messages %}<ul class="messages">{% for m in messages %}<li class="msg {{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+<script src="{% static 'js/app.js' %}?v={{ ASSET_VERSION }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

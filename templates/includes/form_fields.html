@@ -1,0 +1,14 @@
+{% load jf %}{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+{% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+<div class="form-grid">
+{% for field in form.visible_fields %}
+  {% with wt=field|field_type %}
+  <div class="field{% if wt == 'CheckboxInput' %} check{% endif %}{% if wt == 'Textarea' or wt == 'CheckboxSelectMultiple' or wt == 'SelectMultiple' or wt == 'RadioSelect' %} full{% endif %}{% if field.errors %} has-error{% endif %}">
+    {% if wt == 'CheckboxInput' %}{{ field }}<label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% else %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% endif %}
+    {% if field.help_text %}<span class="help">{{ field.help_text|safe }}</span>{% endif %}
+    {% if field.errors %}<ul class="errors">{% for e in field.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  {% endwith %}
+{% endfor %}
+</div>

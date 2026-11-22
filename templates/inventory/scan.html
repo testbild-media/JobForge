@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load jf static %}
+{% block content %}
+<div class="page-head"><div><h1>{% icon 'scan' 22 %} Scanner</h1><div class="sub">QR-/Barcode scannen, um Gerät, Artikel, Lagerort oder Job zu öffnen.</div></div></div>
+<div class="grid grid-2">
+  <div class="card">
+    <div class="scanner hidden" data-scanner-view><video playsinline muted></video><div class="frame"></div></div>
+    <form method="get" data-scan-form>
+      <div class="field"><label for="code">Code</label><input class="scan-input" id="code" name="code" autofocus autocomplete="off" placeholder="Code eingeben oder scannen"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-lg" data-scanner-start>{% icon 'scan' 18 %} Kamera</button>
+        <button class="btn btn-primary btn-lg" type="submit">{% icon 'search' 18 %} Öffnen</button>
+      </div>
+    </form>
+    <p class="muted" style="margin-top:1rem">Handscanner (USB/Bluetooth) funktionieren direkt im Eingabefeld.</p>
+  </div>
+  <div class="card">
+    <h3>Schnellzugriff</h3>
+    <ul class="timeline">
+      {% if perms.inventory.add_movement %}<li><a href="{% url 'inventory:receive' %}">{% icon 'download' 16 %} Wareneingang</a></li>
+      <li><a href="{% url 'inventory:transfer' %}">{% icon 'repeat' 16 %} Umlagerung</a></li>{% endif %}
+      <li><a href="{% url 'projects:job_list' %}?zeit=upcoming">{% icon 'truck' 16 %} Materialausgabe für Job – Job öffnen und „Ausgabe/Rücknahme“ wählen</a></li>
+      <li><a href="{% url 'inventory:defects' %}">{% icon 'tool' 16 %} Defekte</a></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/scanner.js' %}?v={{ ASSET_VERSION }}"></script>{% endblock %}

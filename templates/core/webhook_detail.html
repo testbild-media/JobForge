@@ -1,0 +1,12 @@
+{% extends "core/crud/detail.html" %}{% load jf %}
+{% block detail_actions %}
+<form method="post" action="{% url 'core:webhook_test' object.pk %}">{% csrf_token %}<button class="btn">{% icon 'play' 16 %} Test senden</button></form>
+{% endblock %}
+{% block detail_body %}
+<div class="card"><dl class="kv">{% for label, value in fields %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
+<p class="muted" style="margin-top:1rem">Payload: <code>{"event": "job.updated", "timestamp": "…", "data": {…}}</code>. Signatur: Header <code>X-JobForge-Signature: sha256=&lt;HMAC des Bodys mit dem Geheimnis&gt;</code>.</p></div>
+<div class="card"><h3>Letzte Zustellungen</h3>
+<div class="table-wrap"><table><thead><tr><th>Zeitpunkt</th><th>Ereignis</th><th>HTTP</th><th>Ergebnis</th><th>Antwort</th></tr></thead>
+<tbody>{% for d in deliveries %}<tr class="{% if d.success %}row-ok{% else %}row-danger{% endif %}"><td>{{ d.timestamp|date:"d.m.Y H:i:s" }}</td><td>{{ d.event }}</td><td>{{ d.status_code|default:"–" }}</td><td>{% if d.success %}OK{% else %}Fehler{% endif %}</td><td><small class="mono">{{ d.response|truncatechars:120 }}</small></td></tr>
+{% empty %}<tr><td colspan="5" class="empty">Noch keine Zustellungen.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

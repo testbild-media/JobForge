@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% load jf %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Personalplanung</h1><div class="sub">KW {{ days.0|date:"W" }} · {{ days.0|date:"d.m." }} – {{ days.6|date:"d.m.Y" }}</div></div>
+  <div class="actions">
+    <a class="btn" href="?start={{ prev|date:'Y-m-d' }}&q={{ q }}">‹</a>
+    <a class="btn" href="?q={{ q }}">Heute</a>
+    <a class="btn" href="?start={{ next|date:'Y-m-d' }}&q={{ q }}">›</a>
+    <form method="get" class="inline-form"><input type="hidden" name="start" value="{{ days.0|date:'Y-m-d' }}"><input type="search" name="q" value="{{ q }}" placeholder="Person / Bereich"></form>
+    {% if perms.staff.add_assignment %}<a class="btn btn-primary" href="{% url 'staff:assignment_create' %}">{% icon 'plus' 16 %} Einsatz</a>{% endif %}
+  </div>
+</div>
+{% if unstaffed %}<div class="alert alert-warning"><strong>Ohne Personal:</strong> {% for j in unstaffed %}<a href="{{ j.get_absolute_url }}#tab-personal">{{ j.number }} {{ j.title }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+<div class="card">
+  <div class="table-wrap"><table class="planner">
+    <thead><tr><th>Person</th>{% for d in days %}<th class="{% if d == today %}today{% endif %}">{{ d|date:"D d.m." }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in rows %}<tr>
+      <td><span class="dot" style="--c:{{ row.employee.color }}"></span> <a href="{{ row.employee.get_absolute_url }}">{{ row.employee }}</a><br><small>{{ row.employee.position|default:row.employee.get_kind_display }}</small></td>
+      {% for d, cell in row.cells %}<td class="{% if d.weekday >= 5 %}weekend{% endif %} {% if d == today %}today{% endif %}">
+        {% for ab in cell.absences %}<span class="ev" style="--c:{{ ab.color }}">{{ ab.get_kind_display }}</span>{% endfor %}
+        {% for a in cell.assignments %}<a class="ev" style="--c:{{ a.status_color }}" href="{{ a.job.get_absolute_url }}#tab-personal" title="{{ a.job }} · {{ a.get_status_display }}">{{ a.start|date:"H:i" }} {{ a.job.title|truncatechars:22 }}</a>{% endfor %}
+        {% if perms.staff.add_assignment and not cell.absences %}<a class="muted" style="font-size:.75rem" href="{% url 'staff:assignment_create' %}?employee={{ row.employee.pk }}&start={{ d|date:'Y-m-d' }}T08:00&end={{ d|date:'Y-m-d' }}T18:00">+</a>{% endif %}
+      </td>{% endfor %}
+    </tr>{% empty %}<tr><td colspan="8" class="empty">Kein Personal angelegt.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+<div class="card"><h3>Jobs in dieser Woche</h3>
+  <div class="chips">{% for j in jobs %}<a class="badge" style="--badge:{{ j.status.color|default:'#64748b' }}" href="{{ j.get_absolute_url }}">{{ j.start|date:"D d.m." }} · {{ j.number }} {{ j.title|truncatechars:30 }}</a>{% empty %}<span class="muted">Keine Jobs.</span>{% endfor %}</div></div>
+{% endblock %}
